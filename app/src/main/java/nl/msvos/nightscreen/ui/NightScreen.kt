@@ -111,7 +111,8 @@ fun NightScreen(
                         },
                 )
                 Text(
-                    text = "2% is darkest. 100% adds no dimming.",
+                    text = "Below 20%, Android may block taps in other apps. " +
+                        "Use notification Stop if needed.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

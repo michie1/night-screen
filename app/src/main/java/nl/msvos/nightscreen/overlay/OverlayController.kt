@@ -3,7 +3,6 @@ package nl.msvos.nightscreen.overlay
 import android.content.Context
 import android.graphics.Color
 import android.graphics.PixelFormat
-import android.hardware.input.InputManager
 import android.provider.Settings
 import android.view.Gravity
 import android.view.View
@@ -12,7 +11,6 @@ import android.view.WindowManager
 class OverlayController(context: Context) {
     private val appContext = context.applicationContext
     private val windowManager = appContext.getSystemService(WindowManager::class.java)
-    private val inputManager = appContext.getSystemService(InputManager::class.java)
 
     private var overlayView: View? = null
     private var layoutParams: WindowManager.LayoutParams? = null
@@ -81,8 +79,5 @@ class OverlayController(context: Context) {
     }
 
     private fun windowAlpha(brightnessPercent: Int): Float =
-        BrightnessMapper.toWindowAlpha(
-            brightnessPercent = brightnessPercent,
-            maximumOpacity = inputManager.maximumObscuringOpacityForTouch,
-        )
+        BrightnessMapper.toWindowAlpha(brightnessPercent)
 }

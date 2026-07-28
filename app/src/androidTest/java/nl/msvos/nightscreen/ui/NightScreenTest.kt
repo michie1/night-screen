@@ -31,6 +31,10 @@ class NightScreenTest {
 
         composeRule.onNodeWithText("70%").assertIsDisplayed()
         composeRule.onNodeWithText("Start dimming").assertIsDisplayed()
+        composeRule.onNodeWithText(
+            "Below 20%, Android may block taps in other apps. " +
+                "Use notification Stop if needed.",
+        ).assertIsDisplayed()
     }
 
     @Test

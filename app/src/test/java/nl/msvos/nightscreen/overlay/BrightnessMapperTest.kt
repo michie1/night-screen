@@ -5,30 +5,29 @@ import org.junit.Test
 
 class BrightnessMapperTest {
     @Test
-    fun twoPercentUsesTheSafeMaximum() {
-        assertEquals(0.8f, BrightnessMapper.toWindowAlpha(2, 0.8f), TOLERANCE)
+    fun twoPercentUsesNinetyEightPercentOpacity() {
+        assertEquals(0.98f, BrightnessMapper.toWindowAlpha(2), TOLERANCE)
     }
 
     @Test
-    fun fiftyOnePercentUsesHalfTheSafeMaximum() {
-        assertEquals(0.4f, BrightnessMapper.toWindowAlpha(51, 0.8f), TOLERANCE)
+    fun twentyPercentUsesAndroidsUsualTouchLimit() {
+        assertEquals(0.8f, BrightnessMapper.toWindowAlpha(20), TOLERANCE)
+    }
+
+    @Test
+    fun fiftyOnePercentUsesFortyNinePercentOpacity() {
+        assertEquals(0.49f, BrightnessMapper.toWindowAlpha(51), TOLERANCE)
     }
 
     @Test
     fun oneHundredPercentIsTransparent() {
-        assertEquals(0f, BrightnessMapper.toWindowAlpha(100, 0.8f), TOLERANCE)
+        assertEquals(0f, BrightnessMapper.toWindowAlpha(100), TOLERANCE)
     }
 
     @Test
     fun brightnessIsClamped() {
-        assertEquals(0.8f, BrightnessMapper.toWindowAlpha(0, 0.8f), TOLERANCE)
-        assertEquals(0f, BrightnessMapper.toWindowAlpha(101, 0.8f), TOLERANCE)
-    }
-
-    @Test
-    fun invalidMaximumFallsBackToAndroidDocumentedValue() {
-        assertEquals(0.8f, BrightnessMapper.toWindowAlpha(2, Float.NaN), TOLERANCE)
-        assertEquals(0.8f, BrightnessMapper.toWindowAlpha(2, 2f), TOLERANCE)
+        assertEquals(0.98f, BrightnessMapper.toWindowAlpha(0), TOLERANCE)
+        assertEquals(0f, BrightnessMapper.toWindowAlpha(101), TOLERANCE)
     }
 
     private companion object {

@@ -26,14 +26,17 @@ foreground-service notification and its Stop action stay visible.
 ## Safety
 
 The app changes `WindowManager.LayoutParams.alpha`, not `View.alpha`.
-It caps the window opacity at Android's
-`InputManager.maximumObscuringOpacityForTouch` value.
 
 The brightness scale runs from 2% to 100%:
 
-1. 2% is the darkest touch-safe overlay.
+1. 2% uses a 98% black overlay.
 2. 100% adds no dimming and leaves Android's normal brightness unchanged.
 3. 0% is not offered.
+
+Below about 20%, the overlay exceeds Android's usual touch-through opacity
+limit. Android may then block taps in other apps. Night Screen's own controls
+remain usable during preview, and the ongoing notification keeps its Stop
+action as a backup exit.
 
 The app creates one overlay window. If adding or updating that window fails,
 the foreground service removes the overlay and stops. The service uses
