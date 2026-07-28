@@ -70,8 +70,9 @@ Dimming does not restart after reboot.
 ## Bright-light auto-stop
 
 The optional bright-light rule stops dimming after the front light sensor
-reports at least 250 lux for 10 seconds. Falling below the threshold cancels
-the timer.
+stays above the chosen level for 10 seconds. The default is 20 lux. Falling
+below the level cancels the timer. The settings page shows the current reading
+and lets you set the stop level from 5 to 500 lux.
 
 The light sensor is registered only while dimming is active and this option is
 enabled. It uses the sensor's on-change mode, does not poll, and does not wake

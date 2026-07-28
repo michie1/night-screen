@@ -98,6 +98,23 @@ class NightScreenTest {
         composeRule.onNodeWithText("Light sensor unavailable.").assertIsDisplayed()
     }
 
+    @Test
+    fun lightSensorShowsCurrentLux() {
+        setScreen(
+            MainUiState(
+                currentLux = 310,
+                brightLightThresholdLux = 20,
+                overlayPermissionGranted = true,
+                notificationPermissionGranted = true,
+            ),
+        )
+
+        composeRule.onNodeWithText(
+            "Current light: 310 lux. Stops after 10 seconds above 20 lux.",
+        ).assertIsDisplayed()
+        composeRule.onNodeWithText("Auto-stop level: 20 lux").assertIsDisplayed()
+    }
+
     private fun setScreen(state: MainUiState) {
         composeRule.setContent {
             NightScreenTheme {
@@ -106,6 +123,7 @@ class NightScreenTest {
                     notificationPermissionDenied = false,
                     onBrightnessChanged = {},
                     onAutoStopChanged = {},
+                    onBrightLightThresholdChanged = {},
                     onStart = {},
                     onStop = {},
                     onRequestOverlayPermission = {},

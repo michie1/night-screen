@@ -59,11 +59,13 @@ class DimService : Service() {
             ACTION_START -> startDimming(
                 brightness = intent.brightnessTenths(),
                 autoStop = intent.getBooleanExtra(EXTRA_AUTO_STOP_IN_BRIGHT_LIGHT, false),
+                thresholdLux = intent.brightLightThresholdLux(),
             )
 
             ACTION_UPDATE_BRIGHTNESS -> updateBrightness(intent.brightnessTenths())
             ACTION_UPDATE_AUTO_STOP -> updateAutoStop(
                 intent.getBooleanExtra(EXTRA_AUTO_STOP_IN_BRIGHT_LIGHT, false),
+                intent.brightLightThresholdLux(),
             )
 
             ACTION_APP_VISIBLE -> pauseOverlay()
@@ -74,9 +76,10 @@ class DimService : Service() {
         return START_NOT_STICKY
     }
 
-    private fun startDimming(brightness: Int, autoStop: Boolean) {
+    private fun startDimming(brightness: Int, autoStop: Boolean, thresholdLux: Int) {
         brightnessTenths = brightness
         autoStopInBrightLight = autoStop && brightLightMonitor.isSupported
+        brightLightMonitor.setThreshold(thresholdLux)
 
         runCatching {
             ServiceCompat.startForeground(
@@ -113,13 +116,14 @@ class DimService : Service() {
             .onFailure(::failSafely)
     }
 
-    private fun updateAutoStop(enabled: Boolean) {
+    private fun updateAutoStop(enabled: Boolean, thresholdLux: Int) {
         if (!DimServiceState.running.value) {
             stopSelf()
             return
         }
 
         autoStopInBrightLight = enabled && brightLightMonitor.isSupported
+        brightLightMonitor.setThreshold(thresholdLux)
         brightLightMonitor.setEnabled(autoStopInBrightLight)
     }
 
@@ -172,6 +176,15 @@ class DimService : Service() {
             DimPreferences.DEFAULT_BRIGHTNESS_TENTHS,
         ).coerceIn(BrightnessMapper.MIN_BRIGHTNESS, BrightnessMapper.MAX_BRIGHTNESS)
 
+    private fun Intent.brightLightThresholdLux(): Int =
+        getIntExtra(
+            EXTRA_BRIGHT_LIGHT_THRESHOLD_LUX,
+            DimPreferences.DEFAULT_BRIGHT_LIGHT_THRESHOLD_LUX,
+        ).coerceIn(
+            DimPreferences.MIN_BRIGHT_LIGHT_THRESHOLD_LUX,
+            DimPreferences.MAX_BRIGHT_LIGHT_THRESHOLD_LUX,
+        )
+
     companion object {
         const val ACTION_START = "nl.msvos.nightscreen.action.START"
         const val ACTION_UPDATE_BRIGHTNESS =
@@ -186,6 +199,8 @@ class DimService : Service() {
             "nl.msvos.nightscreen.extra.BRIGHTNESS_TENTHS"
         const val EXTRA_AUTO_STOP_IN_BRIGHT_LIGHT =
             "nl.msvos.nightscreen.extra.AUTO_STOP_IN_BRIGHT_LIGHT"
+        const val EXTRA_BRIGHT_LIGHT_THRESHOLD_LUX =
+            "nl.msvos.nightscreen.extra.BRIGHT_LIGHT_THRESHOLD_LUX"
 
         private const val TAG = "NightScreen"
     }

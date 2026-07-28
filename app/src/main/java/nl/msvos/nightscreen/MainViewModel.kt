@@ -4,6 +4,8 @@ import android.Manifest
 import android.app.Application
 import android.content.pm.PackageManager
 import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.provider.Settings
 import androidx.core.content.ContextCompat
@@ -17,6 +19,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 import nl.msvos.nightscreen.overlay.BrightnessMapper
 import nl.msvos.nightscreen.overlay.DimServiceCommands
 import nl.msvos.nightscreen.overlay.DimServiceState
@@ -25,7 +28,9 @@ import nl.msvos.nightscreen.settings.DimPreferences
 data class MainUiState(
     val brightnessTenths: Int = DimPreferences.DEFAULT_BRIGHTNESS_TENTHS,
     val autoStopInBrightLight: Boolean = false,
+    val brightLightThresholdLux: Int = DimPreferences.DEFAULT_BRIGHT_LIGHT_THRESHOLD_LUX,
     val lightSensorAvailable: Boolean = true,
+    val currentLux: Int? = null,
     val overlayPermissionGranted: Boolean = false,
     val notificationPermissionGranted: Boolean = false,
     val isRunning: Boolean = false,
@@ -44,7 +49,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     )
 
     private var saveBrightnessJob: Job? = null
+    private var saveLightThresholdJob: Job? = null
     private var serviceUpdateJob: Job? = null
+    private var lightServiceUpdateJob: Job? = null
+    private var lightSensorRegistered = false
+    private val lightSensor = sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT)
+    private val lightSensorListener = object : SensorEventListener {
+        override fun onSensorChanged(event: SensorEvent) {
+            val lux = event.values.firstOrNull()?.coerceAtLeast(0f)?.roundToInt() ?: return
+            mutableUiState.update { it.copy(currentLux = lux) }
+        }
+
+        override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
+    }
 
     val uiState: StateFlow<MainUiState> = mutableUiState.asStateFlow()
 
@@ -57,6 +74,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         brightnessTenths = settings.brightnessTenths,
                         autoStopInBrightLight =
                             settings.autoStopInBrightLight && it.lightSensorAvailable,
+                        brightLightThresholdLux = settings.brightLightThresholdLux,
                     )
                 }
             }
@@ -88,6 +106,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         if (!mutableUiState.value.overlayPermissionGranted && mutableUiState.value.isRunning) {
             stopDimming()
+        }
+    }
+
+    fun startLightReading() {
+        if (lightSensorRegistered) {
+            return
+        }
+        val sensor = lightSensor ?: return
+        mutableUiState.update { it.copy(currentLux = null) }
+        lightSensorRegistered = sensorManager.registerListener(
+            lightSensorListener,
+            sensor,
+            SensorManager.SENSOR_DELAY_NORMAL,
+        )
+    }
+
+    fun stopLightReading() {
+        if (lightSensorRegistered) {
+            sensorManager.unregisterListener(lightSensorListener)
+            lightSensorRegistered = false
         }
     }
 
@@ -127,7 +165,39 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             dimPreferences.saveAutoStopInBrightLight(supportedValue)
         }
         if (mutableUiState.value.isRunning) {
-            DimServiceCommands.updateAutoStop(appContext, supportedValue)
+            DimServiceCommands.updateAutoStop(
+                appContext,
+                supportedValue,
+                mutableUiState.value.brightLightThresholdLux,
+            )
+        }
+    }
+
+    fun setBrightLightThresholdLux(thresholdLux: Int) {
+        val clamped = thresholdLux.coerceIn(
+            DimPreferences.MIN_BRIGHT_LIGHT_THRESHOLD_LUX,
+            DimPreferences.MAX_BRIGHT_LIGHT_THRESHOLD_LUX,
+        )
+        mutableUiState.update { it.copy(brightLightThresholdLux = clamped) }
+
+        saveLightThresholdJob?.cancel()
+        saveLightThresholdJob = viewModelScope.launch {
+            delay(PREFERENCE_DEBOUNCE_MILLIS)
+            dimPreferences.saveBrightLightThresholdLux(clamped)
+        }
+
+        if (mutableUiState.value.isRunning) {
+            lightServiceUpdateJob?.cancel()
+            lightServiceUpdateJob = viewModelScope.launch {
+                delay(SERVICE_UPDATE_DEBOUNCE_MILLIS)
+                if (mutableUiState.value.isRunning) {
+                    DimServiceCommands.updateAutoStop(
+                        appContext,
+                        mutableUiState.value.autoStopInBrightLight,
+                        clamped,
+                    )
+                }
+            }
         }
     }
 
@@ -141,19 +211,27 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             dimPreferences.saveBrightnessTenths(state.brightnessTenths)
             dimPreferences.saveAutoStopInBrightLight(state.autoStopInBrightLight)
+            dimPreferences.saveBrightLightThresholdLux(state.brightLightThresholdLux)
         }
         DimServiceCommands.start(
             context = appContext,
             brightnessTenths = state.brightnessTenths,
             autoStopInBrightLight = state.autoStopInBrightLight,
+            brightLightThresholdLux = state.brightLightThresholdLux,
         )
     }
 
     fun stopDimming() {
         serviceUpdateJob?.cancel()
+        lightServiceUpdateJob?.cancel()
         if (mutableUiState.value.isRunning) {
             DimServiceCommands.stop(appContext)
         }
+    }
+
+    override fun onCleared() {
+        stopLightReading()
+        super.onCleared()
     }
 
     companion object {

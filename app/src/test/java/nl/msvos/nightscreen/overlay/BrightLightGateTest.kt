@@ -12,6 +12,7 @@ class BrightLightGateTest {
     private var triggered = false
 
     private val gate = BrightLightGate(
+        thresholdLux = 20f,
         schedule = { delay, action ->
             scheduledDelay = delay
             scheduledAction = action
@@ -27,7 +28,7 @@ class BrightLightGateTest {
 
     @Test
     fun thresholdStartsTenSecondHold() {
-        gate.onLuxChanged(250f)
+        gate.onLuxChanged(20f)
 
         assertEquals(10_000L, scheduledDelay)
         assertFalse(triggered)
@@ -38,8 +39,8 @@ class BrightLightGateTest {
 
     @Test
     fun lowerLightCancelsPendingStop() {
-        gate.onLuxChanged(250f)
-        gate.onLuxChanged(249f)
+        gate.onLuxChanged(20f)
+        gate.onLuxChanged(19f)
 
         assertTrue(canceled)
         assertFalse(triggered)
@@ -48,10 +49,20 @@ class BrightLightGateTest {
 
     @Test
     fun brightUpdatesDoNotRestartTheHold() {
-        gate.onLuxChanged(300f)
+        gate.onLuxChanged(30f)
         val firstAction = scheduledAction
-        gate.onLuxChanged(350f)
+        gate.onLuxChanged(35f)
 
         assertEquals(firstAction, scheduledAction)
+    }
+
+    @Test
+    fun changingThresholdRestartsDecisionUsingLatestReading() {
+        gate.onLuxChanged(15f)
+
+        gate.setThreshold(10f)
+
+        assertEquals(10_000L, scheduledDelay)
+        assertFalse(triggered)
     }
 }

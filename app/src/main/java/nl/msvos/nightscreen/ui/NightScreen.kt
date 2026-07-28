@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
 import nl.msvos.nightscreen.MainUiState
 import nl.msvos.nightscreen.overlay.BrightnessMapper
+import nl.msvos.nightscreen.settings.DimPreferences
 
 @Composable
 fun NightScreen(
@@ -36,6 +37,7 @@ fun NightScreen(
     notificationPermissionDenied: Boolean,
     onBrightnessChanged: (Int) -> Unit,
     onAutoStopChanged: (Boolean) -> Unit,
+    onBrightLightThresholdChanged: (Int) -> Unit,
     onStart: () -> Unit,
     onStop: () -> Unit,
     onRequestOverlayPermission: () -> Unit,
@@ -134,7 +136,9 @@ fun NightScreen(
                         )
                         Text(
                             text = if (state.lightSensorAvailable) {
-                                "Stops after 10 seconds above 250 lux."
+                                val reading = state.currentLux?.let { "$it lux" } ?: "reading…"
+                                "Current light: $reading. Stops after 10 seconds above " +
+                                    "${state.brightLightThresholdLux} lux."
                             } else {
                                 "Light sensor unavailable."
                             },
@@ -147,6 +151,30 @@ fun NightScreen(
                         checked = state.autoStopInBrightLight,
                         onCheckedChange = onAutoStopChanged,
                         enabled = state.lightSensorAvailable,
+                    )
+                }
+                if (state.lightSensorAvailable) {
+                    Text(
+                        text = "Auto-stop level: ${state.brightLightThresholdLux} lux",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Slider(
+                        value = state.brightLightThresholdLux.toFloat(),
+                        onValueChange = {
+                            onBrightLightThresholdChanged(
+                                (it / LIGHT_THRESHOLD_STEP).roundToInt() *
+                                    LIGHT_THRESHOLD_STEP,
+                            )
+                        },
+                        valueRange = DimPreferences.MIN_BRIGHT_LIGHT_THRESHOLD_LUX.toFloat()..
+                            DimPreferences.MAX_BRIGHT_LIGHT_THRESHOLD_LUX.toFloat(),
+                        steps = 98,
+                        enabled = state.autoStopInBrightLight,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .semantics {
+                                contentDescription = "Auto-stop light level"
+                            },
                     )
                 }
 
@@ -190,6 +218,8 @@ fun NightScreen(
         }
     }
 }
+
+private const val LIGHT_THRESHOLD_STEP = 5
 
 @Composable
 private fun PermissionCard(

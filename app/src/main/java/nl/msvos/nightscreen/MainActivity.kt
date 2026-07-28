@@ -40,6 +40,7 @@ class MainActivity : ComponentActivity() {
                     notificationPermissionDenied = notificationPermissionDenied,
                     onBrightnessChanged = viewModel::setBrightnessTenths,
                     onAutoStopChanged = viewModel::setAutoStopInBrightLight,
+                    onBrightLightThresholdChanged = viewModel::setBrightLightThresholdLux,
                     onStart = viewModel::startDimming,
                     onStop = viewModel::stopDimming,
                     onRequestOverlayPermission = ::openOverlayPermission,
@@ -56,7 +57,13 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        viewModel.startLightReading()
         viewModel.refreshPermissions()
+    }
+
+    override fun onPause() {
+        viewModel.stopLightReading()
+        super.onPause()
     }
 
     private fun openOverlayPermission() {

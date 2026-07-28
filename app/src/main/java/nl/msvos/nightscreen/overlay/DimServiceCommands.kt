@@ -9,12 +9,14 @@ object DimServiceCommands {
         context: Context,
         brightnessTenths: Int,
         autoStopInBrightLight: Boolean,
+        brightLightThresholdLux: Int,
     ) {
         ContextCompat.startForegroundService(
             context,
             serviceIntent(context, DimService.ACTION_START).apply {
                 putExtra(DimService.EXTRA_BRIGHTNESS_TENTHS, brightnessTenths)
                 putExtra(DimService.EXTRA_AUTO_STOP_IN_BRIGHT_LIGHT, autoStopInBrightLight)
+                putExtra(DimService.EXTRA_BRIGHT_LIGHT_THRESHOLD_LUX, brightLightThresholdLux)
             },
         )
     }
@@ -27,10 +29,11 @@ object DimServiceCommands {
         )
     }
 
-    fun updateAutoStop(context: Context, enabled: Boolean) {
+    fun updateAutoStop(context: Context, enabled: Boolean, thresholdLux: Int) {
         context.startService(
             serviceIntent(context, DimService.ACTION_UPDATE_AUTO_STOP).apply {
                 putExtra(DimService.EXTRA_AUTO_STOP_IN_BRIGHT_LIGHT, enabled)
+                putExtra(DimService.EXTRA_BRIGHT_LIGHT_THRESHOLD_LUX, thresholdLux)
             },
         )
     }

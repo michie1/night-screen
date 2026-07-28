@@ -18,6 +18,7 @@ private val Context.dimDataStore by preferencesDataStore(name = "dim_preferences
 data class DimSettings(
     val brightnessTenths: Int,
     val autoStopInBrightLight: Boolean,
+    val brightLightThresholdLux: Int,
 )
 
 class DimPreferences(context: Context) {
@@ -40,6 +41,9 @@ class DimPreferences(context: Context) {
                     )
                     ?: DEFAULT_BRIGHTNESS_TENTHS,
                 autoStopInBrightLight = preferences[AUTO_STOP_IN_BRIGHT_LIGHT] ?: false,
+                brightLightThresholdLux = preferences[BRIGHT_LIGHT_THRESHOLD_LUX]
+                    ?.coerceIn(MIN_BRIGHT_LIGHT_THRESHOLD_LUX, MAX_BRIGHT_LIGHT_THRESHOLD_LUX)
+                    ?: DEFAULT_BRIGHT_LIGHT_THRESHOLD_LUX,
             )
         }
 
@@ -72,8 +76,20 @@ class DimPreferences(context: Context) {
         }
     }
 
+    suspend fun saveBrightLightThresholdLux(thresholdLux: Int) {
+        dataStore.edit { preferences ->
+            preferences[BRIGHT_LIGHT_THRESHOLD_LUX] = thresholdLux.coerceIn(
+                MIN_BRIGHT_LIGHT_THRESHOLD_LUX,
+                MAX_BRIGHT_LIGHT_THRESHOLD_LUX,
+            )
+        }
+    }
+
     companion object {
         const val DEFAULT_BRIGHTNESS_TENTHS = 400
+        const val DEFAULT_BRIGHT_LIGHT_THRESHOLD_LUX = 20
+        const val MIN_BRIGHT_LIGHT_THRESHOLD_LUX = 5
+        const val MAX_BRIGHT_LIGHT_THRESHOLD_LUX = 500
 
         internal fun percentToTenths(brightnessPercent: Int): Int =
             (brightnessPercent * 10).coerceIn(
@@ -93,6 +109,8 @@ class DimPreferences(context: Context) {
             intPreferencesKey("brightness_percent")
         private val AUTO_STOP_IN_BRIGHT_LIGHT: Preferences.Key<Boolean> =
             booleanPreferencesKey("auto_stop_in_bright_light")
+        private val BRIGHT_LIGHT_THRESHOLD_LUX: Preferences.Key<Int> =
+            intPreferencesKey("bright_light_threshold_lux")
         private val LEGACY_DIM_PERCENT: Preferences.Key<Int> =
             intPreferencesKey("dim_percent")
     }

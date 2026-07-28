@@ -20,6 +20,7 @@ class BrightLightMonitor(
     private var scheduledAction: Runnable? = null
 
     private val gate = BrightLightGate(
+        thresholdLux = 20f,
         schedule = { delayMillis, action ->
             val runnable = Runnable(action)
             scheduledAction = runnable
@@ -34,6 +35,10 @@ class BrightLightMonitor(
 
     val isSupported: Boolean
         get() = lightSensor != null
+
+    fun setThreshold(thresholdLux: Int) {
+        gate.setThreshold(thresholdLux.toFloat())
+    }
 
     fun setEnabled(enabled: Boolean) {
         if (enabled && !registered) {
