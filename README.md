@@ -103,5 +103,13 @@ Night Screen:
 
 1. Has no internet permission.
 2. Collects no analytics.
-3. Stores only the chosen brightness percentage and bright-light switch.
+3. Stores only the chosen brightness and bright-light settings.
 4. Has no accessibility service.
+
+See [PRIVACY.md](PRIVACY.md) for the full privacy policy.
+
+## Google Play release
+
+Store text and Play Console answers are in `fastlane/metadata/android` and
+`play-console`. See `play-console/release.md` for signed bundle setup and
+release steps.

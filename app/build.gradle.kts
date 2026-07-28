@@ -3,6 +3,30 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+val releaseVersionCode = providers.gradleProperty("releaseVersionCode")
+    .orElse("1")
+    .map(String::toInt)
+val releaseVersionName = providers.gradleProperty("releaseVersionName")
+    .orElse("1.0")
+
+val uploadStoreFile = providers.environmentVariable("NIGHT_SCREEN_UPLOAD_STORE_FILE").orNull
+val uploadStorePassword =
+    providers.environmentVariable("NIGHT_SCREEN_UPLOAD_STORE_PASSWORD").orNull
+val uploadKeyAlias = providers.environmentVariable("NIGHT_SCREEN_UPLOAD_KEY_ALIAS").orNull
+val uploadKeyPassword =
+    providers.environmentVariable("NIGHT_SCREEN_UPLOAD_KEY_PASSWORD").orNull
+val uploadSigningValues = listOf(
+    uploadStoreFile,
+    uploadStorePassword,
+    uploadKeyAlias,
+    uploadKeyPassword,
+)
+val hasUploadSigning = uploadSigningValues.all { !it.isNullOrBlank() }
+
+require(uploadSigningValues.none { !it.isNullOrBlank() } || hasUploadSigning) {
+    "Set all NIGHT_SCREEN_UPLOAD_* environment variables, or none of them."
+}
+
 android {
     namespace = "nl.msvos.nightscreen"
     compileSdk = 36
@@ -11,14 +35,28 @@ android {
         applicationId = "nl.msvos.nightscreen"
         minSdk = 34
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = releaseVersionCode.get()
+        versionName = releaseVersionName.get()
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        if (hasUploadSigning) {
+            create("releaseUpload") {
+                storeFile = file(checkNotNull(uploadStoreFile))
+                storePassword = uploadStorePassword
+                keyAlias = uploadKeyAlias
+                keyPassword = uploadKeyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
+            if (hasUploadSigning) {
+                signingConfig = signingConfigs.getByName("releaseUpload")
+            }
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),

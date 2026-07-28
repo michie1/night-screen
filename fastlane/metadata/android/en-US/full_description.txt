@@ -1,0 +1,21 @@
+Night Screen adds a dark filter that can dim your display below Android's
+normal minimum brightness.
+
+Use the live slider to find a comfortable level from 0.1% to 100%. Dimming
+continues when you leave the app, with a clear Stop action in the ongoing
+notification.
+
+Features:
+
+• Live brightness control
+• Compact floating slider while dimming
+• Optional bright-light auto-stop
+• No ads, accounts, analytics, or internet access
+• Settings stay on your device
+
+Night Screen needs permission to display over other apps so its filter can
+cover the screen. It also needs notifications so the active dimming service
+always has a visible Stop control.
+
+Very dark filters can cause Android to block taps in other apps. The ongoing
+notification provides a backup Stop action.

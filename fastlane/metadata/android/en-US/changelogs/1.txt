@@ -1,0 +1,4 @@
+First release.
+
+Dim the screen below Android's normal minimum, adjust it with a live floating
+slider, and optionally stop dimming in bright light.

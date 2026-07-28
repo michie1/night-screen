@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="500" viewBox="0 0 1024 500">
+  <rect width="1024" height="500" fill="#172554"/>
+  <circle cx="190" cy="250" r="150" fill="#334C98"/>
+  <circle cx="190" cy="250" r="116" fill="#FFFFFF"/>
+  <g transform="translate(73 133) scale(2.17)">
+    <path
+      fill="#111318"
+      d="M69,76C52.4,76 39,62.6 39,46c0,-7.8 3,-14.9 7.8,-20.2C31.5,29.1 20,42.7 20,59c0,18.2 14.8,33 33,33 16.3,0 29.9,-11.5 33.2,-26.8C80.9,73 76.8,76 69,76z"/>
+  </g>
+  <text x="390" y="225" fill="#FFFFFF" font-family="DejaVu Sans, sans-serif"
+    font-size="76" font-weight="700">Night Screen</text>
+  <text x="394" y="292" fill="#D9E2FF" font-family="DejaVu Sans, sans-serif"
+    font-size="31">Dim below Android's minimum brightness</text>
+</svg>
