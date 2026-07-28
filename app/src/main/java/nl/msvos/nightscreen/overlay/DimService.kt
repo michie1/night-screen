@@ -6,55 +6,111 @@ import android.content.pm.ServiceInfo
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.ServiceCompat
+import nl.msvos.nightscreen.AppVisibilityState
 import nl.msvos.nightscreen.notification.DimNotification
 import nl.msvos.nightscreen.settings.DimPreferences
 
 class DimService : Service() {
     private lateinit var overlayController: OverlayController
     private lateinit var dimNotification: DimNotification
+    private lateinit var brightLightMonitor: BrightLightMonitor
+
+    private var brightnessPercent = DimPreferences.DEFAULT_BRIGHTNESS_PERCENT
+    private var autoStopInBrightLight = false
 
     override fun onCreate() {
         super.onCreate()
         overlayController = OverlayController(this)
         dimNotification = DimNotification(this)
+        brightLightMonitor = BrightLightMonitor(this, ::stopDimming)
         dimNotification.createChannel()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
-            ACTION_START -> startDimming(intent.dimPercent())
-            ACTION_UPDATE -> updateDimming(intent.dimPercent())
+            ACTION_START -> startDimming(
+                brightness = intent.brightnessPercent(),
+                autoStop = intent.getBooleanExtra(EXTRA_AUTO_STOP_IN_BRIGHT_LIGHT, false),
+            )
+
+            ACTION_UPDATE_BRIGHTNESS -> updateBrightness(intent.brightnessPercent())
+            ACTION_UPDATE_AUTO_STOP -> updateAutoStop(
+                intent.getBooleanExtra(EXTRA_AUTO_STOP_IN_BRIGHT_LIGHT, false),
+            )
+
+            ACTION_APP_VISIBLE -> pauseOverlay()
+            ACTION_APP_HIDDEN -> resumeOverlay()
             ACTION_STOP -> stopDimming()
             else -> stopDimming()
         }
         return START_NOT_STICKY
     }
 
-    private fun startDimming(percent: Int) {
+    private fun startDimming(brightness: Int, autoStop: Boolean) {
+        brightnessPercent = brightness
+        autoStopInBrightLight = autoStop && brightLightMonitor.isSupported
+
         runCatching {
             ServiceCompat.startForeground(
                 this,
                 DimNotification.NOTIFICATION_ID,
-                dimNotification.build(percent),
+                dimNotification.build(brightnessPercent),
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
             )
-            overlayController.show(percent).getOrThrow()
+            if (!AppVisibilityState.visible.value) {
+                overlayController.show(brightnessPercent).getOrThrow()
+            }
             DimServiceState.setRunning(true)
+            brightLightMonitor.setEnabled(autoStopInBrightLight)
         }.onFailure(::failSafely)
     }
 
-    private fun updateDimming(percent: Int) {
-        if (!overlayController.isShowing) {
-            failSafely(IllegalStateException("Update received without an active overlay"))
+    private fun updateBrightness(brightness: Int) {
+        if (!DimServiceState.running.value) {
+            stopSelf()
             return
         }
 
-        overlayController.update(percent)
-            .onSuccess { dimNotification.update(percent) }
+        brightnessPercent = brightness
+        val result = if (overlayController.isShowing) {
+            overlayController.update(brightnessPercent)
+        } else {
+            Result.success(Unit)
+        }
+        result
+            .onSuccess { dimNotification.update(brightnessPercent) }
+            .onFailure(::failSafely)
+    }
+
+    private fun updateAutoStop(enabled: Boolean) {
+        if (!DimServiceState.running.value) {
+            stopSelf()
+            return
+        }
+
+        autoStopInBrightLight = enabled && brightLightMonitor.isSupported
+        brightLightMonitor.setEnabled(autoStopInBrightLight)
+    }
+
+    private fun pauseOverlay() {
+        if (!DimServiceState.running.value) {
+            stopSelf()
+            return
+        }
+        overlayController.hide()
+            .onFailure(::failSafely)
+    }
+
+    private fun resumeOverlay() {
+        if (!DimServiceState.running.value || overlayController.isShowing) {
+            return
+        }
+        overlayController.show(brightnessPercent)
             .onFailure(::failSafely)
     }
 
     private fun stopDimming() {
+        brightLightMonitor.stop()
         overlayController.hide()
             .onFailure { Log.w(TAG, "Could not remove dimming overlay", it) }
         DimServiceState.setRunning(false)
@@ -68,6 +124,7 @@ class DimService : Service() {
     }
 
     override fun onDestroy() {
+        brightLightMonitor.stop()
         overlayController.hide()
             .onFailure { Log.w(TAG, "Could not remove overlay during service shutdown", it) }
         DimServiceState.setRunning(false)
@@ -76,14 +133,26 @@ class DimService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
-    private fun Intent.dimPercent(): Int =
-        getIntExtra(EXTRA_DIM_PERCENT, DimPreferences.DEFAULT_DIM_PERCENT).coerceIn(0, 100)
+    private fun Intent.brightnessPercent(): Int =
+        getIntExtra(
+            EXTRA_BRIGHTNESS_PERCENT,
+            DimPreferences.DEFAULT_BRIGHTNESS_PERCENT,
+        ).coerceIn(BrightnessMapper.MIN_BRIGHTNESS, BrightnessMapper.MAX_BRIGHTNESS)
 
     companion object {
         const val ACTION_START = "nl.msvos.nightscreen.action.START"
-        const val ACTION_UPDATE = "nl.msvos.nightscreen.action.UPDATE"
+        const val ACTION_UPDATE_BRIGHTNESS =
+            "nl.msvos.nightscreen.action.UPDATE_BRIGHTNESS"
+        const val ACTION_UPDATE_AUTO_STOP =
+            "nl.msvos.nightscreen.action.UPDATE_AUTO_STOP"
+        const val ACTION_APP_VISIBLE = "nl.msvos.nightscreen.action.APP_VISIBLE"
+        const val ACTION_APP_HIDDEN = "nl.msvos.nightscreen.action.APP_HIDDEN"
         const val ACTION_STOP = "nl.msvos.nightscreen.action.STOP"
-        const val EXTRA_DIM_PERCENT = "nl.msvos.nightscreen.extra.DIM_PERCENT"
+
+        const val EXTRA_BRIGHTNESS_PERCENT =
+            "nl.msvos.nightscreen.extra.BRIGHTNESS_PERCENT"
+        const val EXTRA_AUTO_STOP_IN_BRIGHT_LIGHT =
+            "nl.msvos.nightscreen.extra.AUTO_STOP_IN_BRIGHT_LIGHT"
 
         private const val TAG = "NightScreen"
     }

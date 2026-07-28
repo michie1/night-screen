@@ -23,7 +23,7 @@ class NightScreenTest {
     fun readyStateShowsDimControls() {
         setScreen(
             MainUiState(
-                dimPercent = 70,
+                brightnessPercent = 70,
                 overlayPermissionGranted = true,
                 notificationPermissionGranted = true,
             ),
@@ -45,6 +45,21 @@ class NightScreenTest {
 
         composeRule.onNodeWithText("Dimming active").assertIsDisplayed()
         composeRule.onNodeWithText("Stop").assertIsDisplayed()
+        composeRule.onNodeWithText("Dimming is paused while this app is open.")
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun missingLightSensorExplainsWhyAutoStopIsUnavailable() {
+        setScreen(
+            MainUiState(
+                lightSensorAvailable = false,
+                overlayPermissionGranted = true,
+                notificationPermissionGranted = true,
+            ),
+        )
+
+        composeRule.onNodeWithText("Light sensor unavailable.").assertIsDisplayed()
     }
 
     private fun setScreen(state: MainUiState) {
@@ -53,7 +68,8 @@ class NightScreenTest {
                 NightScreen(
                     state = state,
                     notificationPermissionDenied = false,
-                    onDimChanged = {},
+                    onBrightnessChanged = {},
+                    onAutoStopChanged = {},
                     onStart = {},
                     onStop = {},
                     onRequestOverlayPermission = {},

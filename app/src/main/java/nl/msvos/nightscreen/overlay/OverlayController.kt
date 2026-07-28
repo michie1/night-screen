@@ -20,13 +20,13 @@ class OverlayController(context: Context) {
     val isShowing: Boolean
         get() = overlayView != null
 
-    fun show(percent: Int): Result<Unit> = runCatching {
+    fun show(brightnessPercent: Int): Result<Unit> = runCatching {
         check(Settings.canDrawOverlays(appContext)) {
             "Display-over-other-apps permission is not granted"
         }
 
         if (overlayView != null) {
-            update(percent).getOrThrow()
+            update(brightnessPercent).getOrThrow()
             return@runCatching
         }
 
@@ -45,7 +45,7 @@ class OverlayController(context: Context) {
             PixelFormat.TRANSLUCENT,
         ).apply {
             gravity = Gravity.TOP or Gravity.START
-            alpha = windowAlpha(percent)
+            alpha = windowAlpha(brightnessPercent)
             layoutInDisplayCutoutMode =
                 WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
         }
@@ -55,10 +55,10 @@ class OverlayController(context: Context) {
         layoutParams = params
     }
 
-    fun update(percent: Int): Result<Unit> = runCatching {
+    fun update(brightnessPercent: Int): Result<Unit> = runCatching {
         val view = checkNotNull(overlayView) { "Dimming overlay is not visible" }
         val params = checkNotNull(layoutParams) { "Dimming overlay has no layout parameters" }
-        val newAlpha = windowAlpha(percent)
+        val newAlpha = windowAlpha(brightnessPercent)
 
         if (params.alpha != newAlpha) {
             params.alpha = newAlpha
@@ -80,9 +80,9 @@ class OverlayController(context: Context) {
         }
     }
 
-    private fun windowAlpha(percent: Int): Float =
-        DimAmountMapper.toWindowAlpha(
-            percent = percent,
+    private fun windowAlpha(brightnessPercent: Int): Float =
+        BrightnessMapper.toWindowAlpha(
+            brightnessPercent = brightnessPercent,
             maximumOpacity = inputManager.maximumObscuringOpacityForTouch,
         )
 }

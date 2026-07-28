@@ -27,8 +27,13 @@ foreground-service notification and its Stop action stay visible.
 
 The app changes `WindowManager.LayoutParams.alpha`, not `View.alpha`.
 It caps the window opacity at Android's
-`InputManager.maximumObscuringOpacityForTouch` value. The 100% slider position
-therefore means the darkest touch-safe level, not an opaque black screen.
+`InputManager.maximumObscuringOpacityForTouch` value.
+
+The brightness scale runs from 2% to 100%:
+
+1. 2% is the darkest touch-safe overlay.
+2. 100% adds no dimming and leaves Android's normal brightness unchanged.
+3. 0% is not offered.
 
 The app creates one overlay window. If adding or updating that window fails,
 the foreground service removes the overlay and stops. The service uses
@@ -39,6 +44,10 @@ the foreground service removes the overlay and stops. The service uses
 Dimming continues after the Night Screen activity is closed while its
 foreground service is running.
 
+While Night Screen itself is visible, the overlay is hidden so the controls
+and Stop button remain easy to see. The overlay returns when the app moves to
+the background.
+
 Dimming stops when:
 
 1. Stop is pressed in the app.
@@ -47,6 +56,16 @@ Dimming stops when:
 4. An overlay update fails.
 
 Dimming does not restart after reboot.
+
+## Bright-light auto-stop
+
+The optional bright-light rule stops dimming after the front light sensor
+reports at least 5,000 lux for 10 seconds. Falling below the threshold cancels
+the timer.
+
+The light sensor is registered only while dimming is active and this option is
+enabled. It uses the sensor's on-change mode, does not poll, and does not wake
+the phone. Its battery cost should be tiny.
 
 Secure Android screens can hide application overlays. System bars, lock
 screens, screenshots, and display cutouts can also differ by phone maker.
@@ -72,5 +91,5 @@ Night Screen:
 
 1. Has no internet permission.
 2. Collects no analytics.
-3. Stores only the chosen dim percentage.
+3. Stores only the chosen brightness percentage and bright-light switch.
 4. Has no accessibility service.

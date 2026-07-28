@@ -38,7 +38,8 @@ class MainActivity : ComponentActivity() {
                 NightScreen(
                     state = state,
                     notificationPermissionDenied = notificationPermissionDenied,
-                    onDimChanged = viewModel::setDimPercent,
+                    onBrightnessChanged = viewModel::setBrightnessPercent,
+                    onAutoStopChanged = viewModel::setAutoStopInBrightLight,
                     onStart = viewModel::startDimming,
                     onStop = viewModel::stopDimming,
                     onRequestOverlayPermission = ::openOverlayPermission,

@@ -3,6 +3,8 @@ package nl.msvos.nightscreen
 import android.Manifest
 import android.app.Application
 import android.content.pm.PackageManager
+import android.hardware.Sensor
+import android.hardware.SensorManager
 import android.provider.Settings
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
@@ -15,12 +17,15 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import nl.msvos.nightscreen.overlay.BrightnessMapper
 import nl.msvos.nightscreen.overlay.DimServiceCommands
 import nl.msvos.nightscreen.overlay.DimServiceState
 import nl.msvos.nightscreen.settings.DimPreferences
 
 data class MainUiState(
-    val dimPercent: Int = DimPreferences.DEFAULT_DIM_PERCENT,
+    val brightnessPercent: Int = DimPreferences.DEFAULT_BRIGHTNESS_PERCENT,
+    val autoStopInBrightLight: Boolean = false,
+    val lightSensorAvailable: Boolean = true,
     val overlayPermissionGranted: Boolean = false,
     val notificationPermissionGranted: Boolean = false,
     val isRunning: Boolean = false,
@@ -29,17 +34,30 @@ data class MainUiState(
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val appContext = application.applicationContext
     private val dimPreferences = DimPreferences(appContext)
-    private val mutableUiState = MutableStateFlow(MainUiState())
+    private val sensorManager = appContext.getSystemService(SensorManager::class.java)
+    private val mutableUiState = MutableStateFlow(
+        MainUiState(
+            lightSensorAvailable =
+                sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT) != null,
+        ),
+    )
 
-    private var saveJob: Job? = null
+    private var saveBrightnessJob: Job? = null
     private var serviceUpdateJob: Job? = null
 
     val uiState: StateFlow<MainUiState> = mutableUiState.asStateFlow()
 
     init {
         viewModelScope.launch {
-            dimPreferences.dimPercent.collect { percent ->
-                mutableUiState.update { it.copy(dimPercent = percent) }
+            dimPreferences.migrateLegacyDimPercent()
+            dimPreferences.settings.collect { settings ->
+                mutableUiState.update {
+                    it.copy(
+                        brightnessPercent = settings.brightnessPercent,
+                        autoStopInBrightLight =
+                            settings.autoStopInBrightLight && it.lightSensorAvailable,
+                    )
+                }
             }
         }
         viewModelScope.launch {
@@ -67,17 +85,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun setDimPercent(percent: Int) {
+    fun setBrightnessPercent(percent: Int) {
         val clamped = percent.coerceIn(
-            DimPreferences.MIN_DIM_PERCENT,
-            DimPreferences.MAX_DIM_PERCENT,
+            BrightnessMapper.MIN_BRIGHTNESS,
+            BrightnessMapper.MAX_BRIGHTNESS,
         )
-        mutableUiState.update { it.copy(dimPercent = clamped) }
+        mutableUiState.update { it.copy(brightnessPercent = clamped) }
 
-        saveJob?.cancel()
-        saveJob = viewModelScope.launch {
+        saveBrightnessJob?.cancel()
+        saveBrightnessJob = viewModelScope.launch {
             delay(PREFERENCE_DEBOUNCE_MILLIS)
-            runCatching { dimPreferences.saveDimPercent(clamped) }
+            runCatching { dimPreferences.saveBrightnessPercent(clamped) }
                 .onFailure { error ->
                     if (error !is IOException) {
                         throw error
@@ -90,9 +108,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             serviceUpdateJob = viewModelScope.launch {
                 delay(SERVICE_UPDATE_DEBOUNCE_MILLIS)
                 if (mutableUiState.value.isRunning) {
-                    DimServiceCommands.update(appContext, clamped)
+                    DimServiceCommands.updateBrightness(appContext, clamped)
                 }
             }
+        }
+    }
+
+    fun setAutoStopInBrightLight(enabled: Boolean) {
+        val supportedValue = enabled && mutableUiState.value.lightSensorAvailable
+        mutableUiState.update { it.copy(autoStopInBrightLight = supportedValue) }
+        viewModelScope.launch {
+            dimPreferences.saveAutoStopInBrightLight(supportedValue)
+        }
+        if (mutableUiState.value.isRunning) {
+            DimServiceCommands.updateAutoStop(appContext, supportedValue)
         }
     }
 
@@ -104,9 +133,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         viewModelScope.launch {
-            dimPreferences.saveDimPercent(state.dimPercent)
+            dimPreferences.saveBrightnessPercent(state.brightnessPercent)
+            dimPreferences.saveAutoStopInBrightLight(state.autoStopInBrightLight)
         }
-        DimServiceCommands.start(appContext, state.dimPercent)
+        DimServiceCommands.start(
+            context = appContext,
+            brightnessPercent = state.brightnessPercent,
+            autoStopInBrightLight = state.autoStopInBrightLight,
+        )
     }
 
     fun stopDimming() {

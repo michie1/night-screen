@@ -16,6 +16,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -25,13 +26,16 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kotlin.math.roundToInt
 import nl.msvos.nightscreen.MainUiState
+import nl.msvos.nightscreen.overlay.BrightnessMapper
 
 @Composable
 fun NightScreen(
     state: MainUiState,
     notificationPermissionDenied: Boolean,
-    onDimChanged: (Int) -> Unit,
+    onBrightnessChanged: (Int) -> Unit,
+    onAutoStopChanged: (Boolean) -> Unit,
     onStart: () -> Unit,
     onStop: () -> Unit,
     onRequestOverlayPermission: () -> Unit,
@@ -86,25 +90,59 @@ fun NightScreen(
             if (state.overlayPermissionGranted && state.notificationPermissionGranted) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Extra dim",
+                    text = "Brightness",
                     style = MaterialTheme.typography.titleLarge,
                 )
                 Text(
-                    text = "${state.dimPercent}%",
+                    text = "${state.brightnessPercent}%",
                     style = MaterialTheme.typography.displayLarge,
                     fontWeight = FontWeight.Medium,
                 )
                 Slider(
-                    value = state.dimPercent.toFloat(),
-                    onValueChange = { onDimChanged(it.toInt()) },
-                    valueRange = 0f..100f,
-                    steps = 99,
+                    value = state.brightnessPercent.toFloat(),
+                    onValueChange = { onBrightnessChanged(it.roundToInt()) },
+                    valueRange = BrightnessMapper.MIN_BRIGHTNESS.toFloat()..
+                        BrightnessMapper.MAX_BRIGHTNESS.toFloat(),
+                    steps = 97,
                     modifier = Modifier
                         .fillMaxWidth()
                         .semantics {
-                            contentDescription = "Extra dim percentage"
+                            contentDescription = "Brightness percentage"
                         },
                 )
+                Text(
+                    text = "2% is darkest. 100% adds no dimming.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Auto-stop in bright light",
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                        Text(
+                            text = if (state.lightSensorAvailable) {
+                                "Stops after 10 seconds above 5,000 lux."
+                            } else {
+                                "Light sensor unavailable."
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Switch(
+                        checked = state.autoStopInBrightLight,
+                        onCheckedChange = onAutoStopChanged,
+                        enabled = state.lightSensorAvailable,
+                    )
+                }
+
                 Text(
                     text = if (state.isRunning) {
                         "Dimming active"
@@ -130,11 +168,13 @@ fun NightScreen(
                         style = MaterialTheme.typography.titleMedium,
                     )
                 }
-                Text(
-                    text = "100% is capped at Android's safe touch-through limit.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                if (state.isRunning) {
+                    Text(
+                        text = "Dimming is paused while this app is open.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
     }

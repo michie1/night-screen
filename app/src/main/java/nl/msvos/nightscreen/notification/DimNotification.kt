@@ -31,7 +31,7 @@ class DimNotification(private val context: Context) {
         notificationManager.createNotificationChannel(channel)
     }
 
-    fun build(percent: Int): Notification {
+    fun build(brightnessPercent: Int): Notification {
         val openIntent = PendingIntent.getActivity(
             context,
             OPEN_REQUEST_CODE,
@@ -52,7 +52,7 @@ class DimNotification(private val context: Context) {
         return NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_night_screen)
             .setContentTitle(context.getString(R.string.app_name))
-            .setContentText("Extra dim: ${percent.coerceIn(0, 100)}%")
+            .setContentText("Brightness: ${brightnessPercent.coerceIn(2, 100)}%")
             .setContentIntent(openIntent)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
@@ -66,12 +66,15 @@ class DimNotification(private val context: Context) {
             .build()
     }
 
-    fun update(percent: Int) {
+    fun update(brightnessPercent: Int) {
         if (
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
             PackageManager.PERMISSION_GRANTED
         ) {
-            NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, build(percent))
+            NotificationManagerCompat.from(context).notify(
+                NOTIFICATION_ID,
+                build(brightnessPercent),
+            )
         }
     }
 
