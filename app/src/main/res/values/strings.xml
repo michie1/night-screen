@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Night Screen</string>
+    <string name="notification_channel_name">Screen dimming</string>
+    <string name="notification_channel_description">Controls the active screen dimming overlay</string>
+    <string name="notification_stop">Stop</string>
+</resources>
