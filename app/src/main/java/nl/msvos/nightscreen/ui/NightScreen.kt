@@ -134,7 +134,7 @@ fun NightScreen(
                         )
                         Text(
                             text = if (state.lightSensorAvailable) {
-                                "Stops after 10 seconds above 5,000 lux."
+                                "Stops after 10 seconds above 250 lux."
                             } else {
                                 "Light sensor unavailable."
                             },

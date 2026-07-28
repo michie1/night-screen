@@ -31,7 +31,7 @@ internal class BrightLightGate(
     }
 
     companion object {
-        const val LUX_THRESHOLD = 5_000f
+        const val LUX_THRESHOLD = 250f
         const val HOLD_MILLIS = 10_000L
     }
 }

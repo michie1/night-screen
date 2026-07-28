@@ -27,7 +27,7 @@ class BrightLightGateTest {
 
     @Test
     fun thresholdStartsTenSecondHold() {
-        gate.onLuxChanged(5_000f)
+        gate.onLuxChanged(250f)
 
         assertEquals(10_000L, scheduledDelay)
         assertFalse(triggered)
@@ -38,8 +38,8 @@ class BrightLightGateTest {
 
     @Test
     fun lowerLightCancelsPendingStop() {
-        gate.onLuxChanged(5_000f)
-        gate.onLuxChanged(4_999f)
+        gate.onLuxChanged(250f)
+        gate.onLuxChanged(249f)
 
         assertTrue(canceled)
         assertFalse(triggered)
@@ -48,9 +48,9 @@ class BrightLightGateTest {
 
     @Test
     fun brightUpdatesDoNotRestartTheHold() {
-        gate.onLuxChanged(6_000f)
+        gate.onLuxChanged(300f)
         val firstAction = scheduledAction
-        gate.onLuxChanged(7_000f)
+        gate.onLuxChanged(350f)
 
         assertEquals(firstAction, scheduledAction)
     }
