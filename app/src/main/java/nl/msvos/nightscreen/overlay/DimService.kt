@@ -23,6 +23,7 @@ class DimService : Service() {
     private var brightnessTenths = DimPreferences.DEFAULT_BRIGHTNESS_TENTHS
     private var autoStopInBrightLight = false
     private var isStopping = false
+    private var visibleMode = VisibleMode.BACKGROUND
 
     override fun onCreate() {
         super.onCreate()
@@ -68,7 +69,8 @@ class DimService : Service() {
                 intent.brightLightThresholdLux(),
             )
 
-            ACTION_APP_VISIBLE -> pauseOverlay()
+            ACTION_PANEL_VISIBLE -> showPanel()
+            ACTION_SETTINGS_VISIBLE -> pauseOverlay()
             ACTION_APP_HIDDEN -> resumeOverlay()
             ACTION_STOP -> stopDimming()
             else -> stopDimming()
@@ -103,13 +105,20 @@ class DimService : Service() {
         }
 
         brightnessTenths = brightness
-        val result = if (AppVisibilityState.visible.value) {
-            brightnessPreview.start()
-            Result.success(Unit)
-        } else if (overlayController.isShowing) {
-            overlayController.update(brightnessTenths)
-        } else {
-            Result.success(Unit)
+        val result = when (visibleMode) {
+            VisibleMode.PANEL -> {
+                brightnessPreview.updateDirectly()
+                Result.success(Unit)
+            }
+            VisibleMode.SETTINGS -> {
+                brightnessPreview.start()
+                Result.success(Unit)
+            }
+            VisibleMode.BACKGROUND -> if (overlayController.isShowing) {
+                overlayController.update(brightnessTenths)
+            } else {
+                Result.success(Unit)
+            }
         }
         result
             .onSuccess { dimNotification.update(brightnessTenths) }
@@ -127,11 +136,21 @@ class DimService : Service() {
         brightLightMonitor.setEnabled(autoStopInBrightLight)
     }
 
+    private fun showPanel() {
+        if (!DimServiceState.running.value) {
+            stopSelf()
+            return
+        }
+        visibleMode = VisibleMode.PANEL
+        brightnessPreview.updateDirectly()
+    }
+
     private fun pauseOverlay() {
         if (!DimServiceState.running.value) {
             stopSelf()
             return
         }
+        visibleMode = VisibleMode.SETTINGS
         brightnessPreview.appVisible()
     }
 
@@ -139,6 +158,7 @@ class DimService : Service() {
         if (!DimServiceState.running.value) {
             return
         }
+        visibleMode = VisibleMode.BACKGROUND
         brightnessPreview.appHidden()
     }
 
@@ -191,7 +211,8 @@ class DimService : Service() {
             "nl.msvos.nightscreen.action.UPDATE_BRIGHTNESS"
         const val ACTION_UPDATE_AUTO_STOP =
             "nl.msvos.nightscreen.action.UPDATE_AUTO_STOP"
-        const val ACTION_APP_VISIBLE = "nl.msvos.nightscreen.action.APP_VISIBLE"
+        const val ACTION_PANEL_VISIBLE = "nl.msvos.nightscreen.action.PANEL_VISIBLE"
+        const val ACTION_SETTINGS_VISIBLE = "nl.msvos.nightscreen.action.SETTINGS_VISIBLE"
         const val ACTION_APP_HIDDEN = "nl.msvos.nightscreen.action.APP_HIDDEN"
         const val ACTION_STOP = "nl.msvos.nightscreen.action.STOP"
 
@@ -203,5 +224,11 @@ class DimService : Service() {
             "nl.msvos.nightscreen.extra.BRIGHT_LIGHT_THRESHOLD_LUX"
 
         private const val TAG = "NightScreen"
+    }
+
+    private enum class VisibleMode {
+        BACKGROUND,
+        PANEL,
+        SETTINGS,
     }
 }

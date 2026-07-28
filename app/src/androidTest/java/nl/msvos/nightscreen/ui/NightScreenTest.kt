@@ -1,9 +1,17 @@
 package nl.msvos.nightscreen.ui
 
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTouchInput
 import nl.msvos.nightscreen.MainUiState
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -66,6 +74,7 @@ class NightScreenTest {
         composeRule.onNodeWithText("Dimming active").assertIsDisplayed()
         composeRule.onNodeWithText("Stop").assertIsDisplayed()
         composeRule.onNodeWithText("Dimming is paused while this app is open.")
+            .performScrollTo()
             .assertIsDisplayed()
     }
 
@@ -81,6 +90,7 @@ class NightScreenTest {
         )
 
         composeRule.onNodeWithText("Previewing brightness for 10 seconds.")
+            .performScrollTo()
             .assertIsDisplayed()
         composeRule.onNodeWithText("Stop").assertIsDisplayed()
     }
@@ -115,6 +125,30 @@ class NightScreenTest {
         composeRule.onNodeWithText("Auto-stop level: 20 lux").assertIsDisplayed()
     }
 
+    @Test
+    fun activePanelShowsOnlySliderAndSettings() {
+        setActivePanel()
+
+        composeRule.onNodeWithContentDescription("Brightness percentage").assertIsDisplayed()
+        composeRule.onNodeWithText("Settings").assertIsDisplayed()
+        composeRule.onAllNodesWithText("Night Screen").assertCountEquals(0)
+        composeRule.onAllNodesWithText("Stop").assertCountEquals(0)
+        composeRule.onAllNodesWithText("Dimming active").assertCountEquals(0)
+    }
+
+    @Test
+    fun activePanelOutsideAreaDismissesIt() {
+        var dismissed = false
+        setActivePanel(onDismiss = { dismissed = true })
+
+        composeRule.onNodeWithContentDescription("Dismiss brightness panel")
+            .performTouchInput {
+                click(Offset(10f, 10f))
+            }
+
+        assertTrue(dismissed)
+    }
+
     private fun setScreen(state: MainUiState) {
         composeRule.setContent {
             NightScreenTheme {
@@ -129,6 +163,19 @@ class NightScreenTest {
                     onRequestOverlayPermission = {},
                     onRequestNotificationPermission = {},
                     onOpenNotificationSettings = {},
+                )
+            }
+        }
+    }
+
+    private fun setActivePanel(onDismiss: () -> Unit = {}) {
+        composeRule.setContent {
+            NightScreenTheme {
+                ActiveBrightnessPanel(
+                    brightnessTenths = 400,
+                    onBrightnessChanged = {},
+                    onOpenSettings = {},
+                    onDismiss = onDismiss,
                 )
             }
         }

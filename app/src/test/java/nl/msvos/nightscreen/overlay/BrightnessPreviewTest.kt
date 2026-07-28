@@ -61,6 +61,18 @@ class BrightnessPreviewTest {
     }
 
     @Test
+    fun directUpdateShowsOverlayWithoutTimer() {
+        preview.start()
+
+        preview.updateDirectly()
+
+        assertFalse(previewing)
+        assertEquals(null, scheduledAction)
+        assertEquals(2, showCount)
+        assertEquals(0, hideCount)
+    }
+
+    @Test
     fun appBackgroundCancelsTimerAndKeepsOverlayVisible() {
         preview.start()
 

@@ -229,6 +229,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun showActivePanel() {
+        if (mutableUiState.value.isRunning) {
+            DimServiceCommands.panelVisible(appContext)
+        }
+    }
+
+    fun showFullSettings() {
+        if (mutableUiState.value.isRunning) {
+            DimServiceCommands.settingsVisible(appContext)
+        }
+    }
+
+    fun appHidden() {
+        if (mutableUiState.value.isRunning) {
+            DimServiceCommands.appHidden(appContext)
+        }
+    }
+
     override fun onCleared() {
         stopLightReading()
         super.onCleared()

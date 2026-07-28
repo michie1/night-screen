@@ -54,9 +54,10 @@ While Night Screen itself is visible, the overlay is hidden so the controls
 and Stop button remain easy to see. The overlay returns when the app moves to
 the background.
 
-While dimming is active, changing the brightness slider previews the real
-overlay for 10 seconds. Each slider change restarts the 10-second period.
-Leaving Night Screen ends the preview and keeps the overlay visible as normal.
+While dimming is active, opening Night Screen shows a small brightness panel
+over the previous screen. Slider changes update the real overlay at once.
+Tapping outside the panel closes it and keeps dimming active. Settings opens
+the full app, where slider changes preview the overlay for 10 seconds.
 
 Dimming stops when:
 

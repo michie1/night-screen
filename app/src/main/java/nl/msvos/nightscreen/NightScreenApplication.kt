@@ -15,9 +15,6 @@ class NightScreenApplication : Application(), DefaultLifecycleObserver {
 
     override fun onStart(owner: LifecycleOwner) {
         AppVisibilityState.setVisible(true)
-        if (DimServiceState.running.value) {
-            DimServiceCommands.appVisible(this)
-        }
     }
 
     override fun onStop(owner: LifecycleOwner) {

@@ -30,6 +30,11 @@ internal class BrightnessPreview(
         hideOverlay()
     }
 
+    fun updateDirectly() {
+        clear()
+        showOverlay()
+    }
+
     fun appHidden() {
         clear()
         showOverlay()

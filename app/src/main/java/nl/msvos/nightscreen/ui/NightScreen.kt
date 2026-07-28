@@ -1,6 +1,10 @@
 package nl.msvos.nightscreen.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -44,11 +48,12 @@ fun NightScreen(
     onRequestNotificationPermission: () -> Unit,
     onOpenNotificationSettings: () -> Unit,
 ) {
-    Scaffold { contentPadding ->
+    Scaffold(containerColor = MaterialTheme.colorScheme.background) { contentPadding ->
         Column(
             modifier = Modifier
                 .padding(contentPadding)
                 .padding(horizontal = 24.dp, vertical = 20.dp)
+                .verticalScroll(rememberScrollState())
                 .fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
@@ -220,6 +225,55 @@ fun NightScreen(
 }
 
 private const val LIGHT_THRESHOLD_STEP = 5
+
+@Composable
+fun ActiveBrightnessPanel(
+    brightnessTenths: Int,
+    onBrightnessChanged: (Int) -> Unit,
+    onOpenSettings: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .clickable(onClick = onDismiss)
+            .semantics {
+                contentDescription = "Dismiss brightness panel"
+            }
+            .padding(horizontal = 24.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Card(
+            onClick = {},
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface,
+            ),
+            shape = RoundedCornerShape(20.dp),
+        ) {
+            Column(
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                horizontalAlignment = Alignment.End,
+            ) {
+                Slider(
+                    value = brightnessTenths.toFloat(),
+                    onValueChange = { onBrightnessChanged(it.roundToInt()) },
+                    valueRange = BrightnessMapper.MIN_BRIGHTNESS.toFloat()..
+                        BrightnessMapper.MAX_BRIGHTNESS.toFloat(),
+                    steps = 998,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics {
+                            contentDescription = "Brightness percentage"
+                        },
+                )
+                TextButton(onClick = onOpenSettings) {
+                    Text("Settings")
+                }
+            }
+        }
+    }
+}
 
 @Composable
 private fun PermissionCard(

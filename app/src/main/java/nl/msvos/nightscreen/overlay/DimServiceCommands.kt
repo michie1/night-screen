@@ -38,8 +38,12 @@ object DimServiceCommands {
         )
     }
 
-    fun appVisible(context: Context) {
-        context.startService(serviceIntent(context, DimService.ACTION_APP_VISIBLE))
+    fun panelVisible(context: Context) {
+        context.startService(serviceIntent(context, DimService.ACTION_PANEL_VISIBLE))
+    }
+
+    fun settingsVisible(context: Context) {
+        context.startService(serviceIntent(context, DimService.ACTION_SETTINGS_VISIBLE))
     }
 
     fun appHidden(context: Context) {
