@@ -29,6 +29,7 @@ data class MainUiState(
     val overlayPermissionGranted: Boolean = false,
     val notificationPermissionGranted: Boolean = false,
     val isRunning: Boolean = false,
+    val isPreviewing: Boolean = false,
 )
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
@@ -63,6 +64,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             DimServiceState.running.collect { running ->
                 mutableUiState.update { it.copy(isRunning = running) }
+            }
+        }
+        viewModelScope.launch {
+            DimServiceState.isPreviewing.collect { previewing ->
+                mutableUiState.update { it.copy(isPreviewing = previewing) }
             }
         }
         refreshPermissions()

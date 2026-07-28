@@ -170,7 +170,11 @@ fun NightScreen(
                 }
                 if (state.isRunning) {
                     Text(
-                        text = "Dimming is paused while this app is open.",
+                        text = if (state.isPreviewing) {
+                            "Previewing brightness for 10 seconds."
+                        } else {
+                            "Dimming is paused while this app is open."
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

@@ -50,6 +50,22 @@ class NightScreenTest {
     }
 
     @Test
+    fun previewingStateShowsPreviewStatus() {
+        setScreen(
+            MainUiState(
+                overlayPermissionGranted = true,
+                notificationPermissionGranted = true,
+                isRunning = true,
+                isPreviewing = true,
+            ),
+        )
+
+        composeRule.onNodeWithText("Previewing brightness for 10 seconds.")
+            .assertIsDisplayed()
+        composeRule.onNodeWithText("Stop").assertIsDisplayed()
+    }
+
+    @Test
     fun missingLightSensorExplainsWhyAutoStopIsUnavailable() {
         setScreen(
             MainUiState(

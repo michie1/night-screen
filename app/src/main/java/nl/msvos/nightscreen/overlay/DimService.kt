@@ -4,6 +4,8 @@ import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.IBinder
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import androidx.core.app.ServiceCompat
 import nl.msvos.nightscreen.AppVisibilityState
@@ -14,15 +16,41 @@ class DimService : Service() {
     private lateinit var overlayController: OverlayController
     private lateinit var dimNotification: DimNotification
     private lateinit var brightLightMonitor: BrightLightMonitor
+    private lateinit var brightnessPreview: BrightnessPreview
+    private val previewHandler = Handler(Looper.getMainLooper())
+    private var previewExpiry: Runnable? = null
 
     private var brightnessPercent = DimPreferences.DEFAULT_BRIGHTNESS_PERCENT
     private var autoStopInBrightLight = false
+    private var isStopping = false
 
     override fun onCreate() {
         super.onCreate()
         overlayController = OverlayController(this)
         dimNotification = DimNotification(this)
         brightLightMonitor = BrightLightMonitor(this, ::stopDimming)
+        DimServiceState.setPreviewing(false)
+        brightnessPreview = BrightnessPreview(
+            schedule = { delayMillis, action ->
+                Runnable(action).also { runnable ->
+                    previewExpiry = runnable
+                    previewHandler.postDelayed(runnable, delayMillis)
+                }
+            },
+            cancelScheduled = {
+                previewExpiry?.let(previewHandler::removeCallbacks)
+                previewExpiry = null
+            },
+            showOverlay = {
+                overlayController.show(brightnessPercent)
+                    .onFailure(::failSafely)
+            },
+            hideOverlay = {
+                overlayController.hide()
+                    .onFailure(::failSafely)
+            },
+            setPreviewing = DimServiceState::setPreviewing,
+        )
         dimNotification.createChannel()
     }
 
@@ -72,7 +100,10 @@ class DimService : Service() {
         }
 
         brightnessPercent = brightness
-        val result = if (overlayController.isShowing) {
+        val result = if (AppVisibilityState.visible.value) {
+            brightnessPreview.start()
+            Result.success(Unit)
+        } else if (overlayController.isShowing) {
             overlayController.update(brightnessPercent)
         } else {
             Result.success(Unit)
@@ -97,22 +128,23 @@ class DimService : Service() {
             stopSelf()
             return
         }
-        overlayController.hide()
-            .onFailure(::failSafely)
+        brightnessPreview.appVisible()
     }
 
     private fun resumeOverlay() {
-        if (!DimServiceState.running.value || overlayController.isShowing) {
+        if (!DimServiceState.running.value) {
             return
         }
-        overlayController.show(brightnessPercent)
-            .onFailure(::failSafely)
+        brightnessPreview.appHidden()
     }
 
     private fun stopDimming() {
+        if (isStopping) {
+            return
+        }
+        isStopping = true
+        brightnessPreview.stop()
         brightLightMonitor.stop()
-        overlayController.hide()
-            .onFailure { Log.w(TAG, "Could not remove dimming overlay", it) }
         DimServiceState.setRunning(false)
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         stopSelf()
@@ -120,13 +152,14 @@ class DimService : Service() {
 
     private fun failSafely(error: Throwable) {
         Log.e(TAG, "Dimming failed; stopping safely", error)
-        stopDimming()
+        if (!isStopping) {
+            stopDimming()
+        }
     }
 
     override fun onDestroy() {
+        brightnessPreview.stop()
         brightLightMonitor.stop()
-        overlayController.hide()
-            .onFailure { Log.w(TAG, "Could not remove overlay during service shutdown", it) }
         DimServiceState.setRunning(false)
         super.onDestroy()
     }
