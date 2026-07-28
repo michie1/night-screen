@@ -6,16 +6,21 @@ import org.junit.Test
 class DimPreferencesTest {
     @Test
     fun legacyNoDimBecomesFullBrightness() {
-        assertEquals(100, DimPreferences.legacyDimToBrightness(0))
+        assertEquals(1_000, DimPreferences.legacyDimToBrightnessTenths(0))
     }
 
     @Test
-    fun legacyDefaultKeepsAboutTheSameVisibleLevel() {
-        assertEquals(41, DimPreferences.legacyDimToBrightness(60))
+    fun legacyDefaultKeepsTheSameVisibleLevel() {
+        assertEquals(400, DimPreferences.legacyDimToBrightnessTenths(60))
     }
 
     @Test
     fun legacyMaximumDimBecomesDarkestBrightness() {
-        assertEquals(2, DimPreferences.legacyDimToBrightness(100))
+        assertEquals(1, DimPreferences.legacyDimToBrightnessTenths(100))
+    }
+
+    @Test
+    fun savedWholePercentConvertsExactlyToTenths() {
+        assertEquals(570, DimPreferences.percentToTenths(57))
     }
 }

@@ -25,13 +25,16 @@ foreground-service notification and its Stop action stay visible.
 
 ## Safety
 
-The app changes `WindowManager.LayoutParams.alpha`, not `View.alpha`.
+The app temporarily asks Android for minimum display brightness while its
+overlay is visible, then adds a software filter with
+`WindowManager.LayoutParams.alpha`. It does not change Android's saved
+brightness or automatic-brightness mode.
 
-The brightness scale runs from 2% to 100%:
+The brightness scale runs from 0.1% to 100%:
 
-1. 2% uses a 98% black overlay.
-2. 100% adds no dimming and leaves Android's normal brightness unchanged.
-3. 0% is not offered.
+1. 0.1% uses a 99.9% black overlay.
+2. 100% removes both the filter and temporary display-brightness override.
+3. Fully black 0% is not offered.
 
 Below about 20%, the overlay exceeds Android's usual touch-through opacity
 limit. Android may then block taps in other apps. Night Screen's own controls

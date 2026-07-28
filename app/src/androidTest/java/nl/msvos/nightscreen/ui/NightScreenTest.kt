@@ -23,7 +23,7 @@ class NightScreenTest {
     fun readyStateShowsDimControls() {
         setScreen(
             MainUiState(
-                brightnessPercent = 70,
+                brightnessTenths = 700,
                 overlayPermissionGranted = true,
                 notificationPermissionGranted = true,
             ),
@@ -35,6 +35,22 @@ class NightScreenTest {
             "Below 20%, Android may block taps in other apps. " +
                 "Use notification Stop if needed.",
         ).assertIsDisplayed()
+        composeRule.onNodeWithText(
+            "While dimming, Night Screen uses minimum display brightness plus this filter.",
+        ).assertIsDisplayed()
+    }
+
+    @Test
+    fun extraDarkStateShowsDecimalBrightness() {
+        setScreen(
+            MainUiState(
+                brightnessTenths = 1,
+                overlayPermissionGranted = true,
+                notificationPermissionGranted = true,
+            ),
+        )
+
+        composeRule.onNodeWithText("0.1%").assertIsDisplayed()
     }
 
     @Test

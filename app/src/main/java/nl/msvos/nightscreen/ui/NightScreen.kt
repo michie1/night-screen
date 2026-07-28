@@ -94,21 +94,27 @@ fun NightScreen(
                     style = MaterialTheme.typography.titleLarge,
                 )
                 Text(
-                    text = "${state.brightnessPercent}%",
+                    text = BrightnessMapper.formatPercent(state.brightnessTenths),
                     style = MaterialTheme.typography.displayLarge,
                     fontWeight = FontWeight.Medium,
                 )
                 Slider(
-                    value = state.brightnessPercent.toFloat(),
+                    value = state.brightnessTenths.toFloat(),
                     onValueChange = { onBrightnessChanged(it.roundToInt()) },
                     valueRange = BrightnessMapper.MIN_BRIGHTNESS.toFloat()..
                         BrightnessMapper.MAX_BRIGHTNESS.toFloat(),
-                    steps = 97,
+                    steps = 998,
                     modifier = Modifier
                         .fillMaxWidth()
                         .semantics {
                             contentDescription = "Brightness percentage"
                         },
+                )
+                Text(
+                    text = "While dimming, Night Screen uses minimum display brightness " +
+                        "plus this filter.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
                     text = "Below 20%, Android may block taps in other apps. " +

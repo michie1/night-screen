@@ -8,7 +8,6 @@ import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import java.io.IOException
-import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
@@ -17,7 +16,7 @@ import nl.msvos.nightscreen.overlay.BrightnessMapper
 private val Context.dimDataStore by preferencesDataStore(name = "dim_preferences")
 
 data class DimSettings(
-    val brightnessPercent: Int,
+    val brightnessTenths: Int,
     val autoStopInBrightLight: Boolean,
 )
 
@@ -34,30 +33,33 @@ class DimPreferences(context: Context) {
         }
         .map { preferences ->
             DimSettings(
-                brightnessPercent = preferences[BRIGHTNESS_PERCENT]
+                brightnessTenths = preferences[BRIGHTNESS_TENTHS]
                     ?.coerceIn(
                         BrightnessMapper.MIN_BRIGHTNESS,
                         BrightnessMapper.MAX_BRIGHTNESS,
                     )
-                    ?: DEFAULT_BRIGHTNESS_PERCENT,
+                    ?: DEFAULT_BRIGHTNESS_TENTHS,
                 autoStopInBrightLight = preferences[AUTO_STOP_IN_BRIGHT_LIGHT] ?: false,
             )
         }
 
-    suspend fun migrateLegacyDimPercent() {
+    suspend fun migrateBrightnessScale() {
         dataStore.edit { preferences ->
-            if (preferences[BRIGHTNESS_PERCENT] == null) {
-                preferences[BRIGHTNESS_PERCENT] = preferences[LEGACY_DIM_PERCENT]
-                    ?.let(::legacyDimToBrightness)
-                    ?: DEFAULT_BRIGHTNESS_PERCENT
+            if (preferences[BRIGHTNESS_TENTHS] == null) {
+                preferences[BRIGHTNESS_TENTHS] = preferences[BRIGHTNESS_PERCENT]
+                    ?.let(::percentToTenths)
+                    ?: preferences[LEGACY_DIM_PERCENT]
+                        ?.let(::legacyDimToBrightnessTenths)
+                    ?: DEFAULT_BRIGHTNESS_TENTHS
             }
+            preferences.remove(BRIGHTNESS_PERCENT)
             preferences.remove(LEGACY_DIM_PERCENT)
         }
     }
 
-    suspend fun saveBrightnessPercent(brightnessPercent: Int) {
+    suspend fun saveBrightnessTenths(brightnessTenths: Int) {
         dataStore.edit { preferences ->
-            preferences[BRIGHTNESS_PERCENT] = brightnessPercent.coerceIn(
+            preferences[BRIGHTNESS_TENTHS] = brightnessTenths.coerceIn(
                 BrightnessMapper.MIN_BRIGHTNESS,
                 BrightnessMapper.MAX_BRIGHTNESS,
             )
@@ -71,20 +73,22 @@ class DimPreferences(context: Context) {
     }
 
     companion object {
-        const val DEFAULT_BRIGHTNESS_PERCENT = 40
+        const val DEFAULT_BRIGHTNESS_TENTHS = 400
 
-        internal fun legacyDimToBrightness(dimPercent: Int): Int =
-            (
-                BrightnessMapper.MAX_BRIGHTNESS -
-                    dimPercent.coerceIn(0, 100) / 100f *
-                    (BrightnessMapper.MAX_BRIGHTNESS - BrightnessMapper.MIN_BRIGHTNESS)
-                )
-                .roundToInt()
-                .coerceIn(
-                    BrightnessMapper.MIN_BRIGHTNESS,
-                    BrightnessMapper.MAX_BRIGHTNESS,
-                )
+        internal fun percentToTenths(brightnessPercent: Int): Int =
+            (brightnessPercent * 10).coerceIn(
+                BrightnessMapper.MIN_BRIGHTNESS,
+                BrightnessMapper.MAX_BRIGHTNESS,
+            )
 
+        internal fun legacyDimToBrightnessTenths(dimPercent: Int): Int =
+            ((100 - dimPercent.coerceIn(0, 100)) * 10).coerceIn(
+                BrightnessMapper.MIN_BRIGHTNESS,
+                BrightnessMapper.MAX_BRIGHTNESS,
+            )
+
+        private val BRIGHTNESS_TENTHS: Preferences.Key<Int> =
+            intPreferencesKey("brightness_tenths")
         private val BRIGHTNESS_PERCENT: Preferences.Key<Int> =
             intPreferencesKey("brightness_percent")
         private val AUTO_STOP_IN_BRIGHT_LIGHT: Preferences.Key<Boolean> =

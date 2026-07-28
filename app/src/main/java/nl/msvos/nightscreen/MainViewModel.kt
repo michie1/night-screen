@@ -23,7 +23,7 @@ import nl.msvos.nightscreen.overlay.DimServiceState
 import nl.msvos.nightscreen.settings.DimPreferences
 
 data class MainUiState(
-    val brightnessPercent: Int = DimPreferences.DEFAULT_BRIGHTNESS_PERCENT,
+    val brightnessTenths: Int = DimPreferences.DEFAULT_BRIGHTNESS_TENTHS,
     val autoStopInBrightLight: Boolean = false,
     val lightSensorAvailable: Boolean = true,
     val overlayPermissionGranted: Boolean = false,
@@ -50,11 +50,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         viewModelScope.launch {
-            dimPreferences.migrateLegacyDimPercent()
+            dimPreferences.migrateBrightnessScale()
             dimPreferences.settings.collect { settings ->
                 mutableUiState.update {
                     it.copy(
-                        brightnessPercent = settings.brightnessPercent,
+                        brightnessTenths = settings.brightnessTenths,
                         autoStopInBrightLight =
                             settings.autoStopInBrightLight && it.lightSensorAvailable,
                     )
@@ -91,17 +91,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun setBrightnessPercent(percent: Int) {
-        val clamped = percent.coerceIn(
+    fun setBrightnessTenths(tenths: Int) {
+        val clamped = tenths.coerceIn(
             BrightnessMapper.MIN_BRIGHTNESS,
             BrightnessMapper.MAX_BRIGHTNESS,
         )
-        mutableUiState.update { it.copy(brightnessPercent = clamped) }
+        mutableUiState.update { it.copy(brightnessTenths = clamped) }
 
         saveBrightnessJob?.cancel()
         saveBrightnessJob = viewModelScope.launch {
             delay(PREFERENCE_DEBOUNCE_MILLIS)
-            runCatching { dimPreferences.saveBrightnessPercent(clamped) }
+            runCatching { dimPreferences.saveBrightnessTenths(clamped) }
                 .onFailure { error ->
                     if (error !is IOException) {
                         throw error
@@ -139,12 +139,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         viewModelScope.launch {
-            dimPreferences.saveBrightnessPercent(state.brightnessPercent)
+            dimPreferences.saveBrightnessTenths(state.brightnessTenths)
             dimPreferences.saveAutoStopInBrightLight(state.autoStopInBrightLight)
         }
         DimServiceCommands.start(
             context = appContext,
-            brightnessPercent = state.brightnessPercent,
+            brightnessTenths = state.brightnessTenths,
             autoStopInBrightLight = state.autoStopInBrightLight,
         )
     }

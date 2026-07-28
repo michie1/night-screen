@@ -7,22 +7,22 @@ import androidx.core.content.ContextCompat
 object DimServiceCommands {
     fun start(
         context: Context,
-        brightnessPercent: Int,
+        brightnessTenths: Int,
         autoStopInBrightLight: Boolean,
     ) {
         ContextCompat.startForegroundService(
             context,
             serviceIntent(context, DimService.ACTION_START).apply {
-                putExtra(DimService.EXTRA_BRIGHTNESS_PERCENT, brightnessPercent)
+                putExtra(DimService.EXTRA_BRIGHTNESS_TENTHS, brightnessTenths)
                 putExtra(DimService.EXTRA_AUTO_STOP_IN_BRIGHT_LIGHT, autoStopInBrightLight)
             },
         )
     }
 
-    fun updateBrightness(context: Context, brightnessPercent: Int) {
+    fun updateBrightness(context: Context, brightnessTenths: Int) {
         context.startService(
             serviceIntent(context, DimService.ACTION_UPDATE_BRIGHTNESS).apply {
-                putExtra(DimService.EXTRA_BRIGHTNESS_PERCENT, brightnessPercent)
+                putExtra(DimService.EXTRA_BRIGHTNESS_TENTHS, brightnessTenths)
             },
         )
     }

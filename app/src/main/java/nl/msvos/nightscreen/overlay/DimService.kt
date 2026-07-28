@@ -20,7 +20,7 @@ class DimService : Service() {
     private val previewHandler = Handler(Looper.getMainLooper())
     private var previewExpiry: Runnable? = null
 
-    private var brightnessPercent = DimPreferences.DEFAULT_BRIGHTNESS_PERCENT
+    private var brightnessTenths = DimPreferences.DEFAULT_BRIGHTNESS_TENTHS
     private var autoStopInBrightLight = false
     private var isStopping = false
 
@@ -42,7 +42,7 @@ class DimService : Service() {
                 previewExpiry = null
             },
             showOverlay = {
-                overlayController.show(brightnessPercent)
+                overlayController.show(brightnessTenths)
                     .onFailure(::failSafely)
             },
             hideOverlay = {
@@ -57,11 +57,11 @@ class DimService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_START -> startDimming(
-                brightness = intent.brightnessPercent(),
+                brightness = intent.brightnessTenths(),
                 autoStop = intent.getBooleanExtra(EXTRA_AUTO_STOP_IN_BRIGHT_LIGHT, false),
             )
 
-            ACTION_UPDATE_BRIGHTNESS -> updateBrightness(intent.brightnessPercent())
+            ACTION_UPDATE_BRIGHTNESS -> updateBrightness(intent.brightnessTenths())
             ACTION_UPDATE_AUTO_STOP -> updateAutoStop(
                 intent.getBooleanExtra(EXTRA_AUTO_STOP_IN_BRIGHT_LIGHT, false),
             )
@@ -75,18 +75,18 @@ class DimService : Service() {
     }
 
     private fun startDimming(brightness: Int, autoStop: Boolean) {
-        brightnessPercent = brightness
+        brightnessTenths = brightness
         autoStopInBrightLight = autoStop && brightLightMonitor.isSupported
 
         runCatching {
             ServiceCompat.startForeground(
                 this,
                 DimNotification.NOTIFICATION_ID,
-                dimNotification.build(brightnessPercent),
+                dimNotification.build(brightnessTenths),
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
             )
             if (!AppVisibilityState.visible.value) {
-                overlayController.show(brightnessPercent).getOrThrow()
+                overlayController.show(brightnessTenths).getOrThrow()
             }
             DimServiceState.setRunning(true)
             brightLightMonitor.setEnabled(autoStopInBrightLight)
@@ -99,17 +99,17 @@ class DimService : Service() {
             return
         }
 
-        brightnessPercent = brightness
+        brightnessTenths = brightness
         val result = if (AppVisibilityState.visible.value) {
             brightnessPreview.start()
             Result.success(Unit)
         } else if (overlayController.isShowing) {
-            overlayController.update(brightnessPercent)
+            overlayController.update(brightnessTenths)
         } else {
             Result.success(Unit)
         }
         result
-            .onSuccess { dimNotification.update(brightnessPercent) }
+            .onSuccess { dimNotification.update(brightnessTenths) }
             .onFailure(::failSafely)
     }
 
@@ -166,10 +166,10 @@ class DimService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
-    private fun Intent.brightnessPercent(): Int =
+    private fun Intent.brightnessTenths(): Int =
         getIntExtra(
-            EXTRA_BRIGHTNESS_PERCENT,
-            DimPreferences.DEFAULT_BRIGHTNESS_PERCENT,
+            EXTRA_BRIGHTNESS_TENTHS,
+            DimPreferences.DEFAULT_BRIGHTNESS_TENTHS,
         ).coerceIn(BrightnessMapper.MIN_BRIGHTNESS, BrightnessMapper.MAX_BRIGHTNESS)
 
     companion object {
@@ -182,8 +182,8 @@ class DimService : Service() {
         const val ACTION_APP_HIDDEN = "nl.msvos.nightscreen.action.APP_HIDDEN"
         const val ACTION_STOP = "nl.msvos.nightscreen.action.STOP"
 
-        const val EXTRA_BRIGHTNESS_PERCENT =
-            "nl.msvos.nightscreen.extra.BRIGHTNESS_PERCENT"
+        const val EXTRA_BRIGHTNESS_TENTHS =
+            "nl.msvos.nightscreen.extra.BRIGHTNESS_TENTHS"
         const val EXTRA_AUTO_STOP_IN_BRIGHT_LIGHT =
             "nl.msvos.nightscreen.extra.AUTO_STOP_IN_BRIGHT_LIGHT"
 

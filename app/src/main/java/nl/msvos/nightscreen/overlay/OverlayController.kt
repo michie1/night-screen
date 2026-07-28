@@ -18,13 +18,13 @@ class OverlayController(context: Context) {
     val isShowing: Boolean
         get() = overlayView != null
 
-    fun show(brightnessPercent: Int): Result<Unit> = runCatching {
+    fun show(brightnessTenths: Int): Result<Unit> = runCatching {
         check(Settings.canDrawOverlays(appContext)) {
             "Display-over-other-apps permission is not granted"
         }
 
         if (overlayView != null) {
-            update(brightnessPercent).getOrThrow()
+            update(brightnessTenths).getOrThrow()
             return@runCatching
         }
 
@@ -43,7 +43,8 @@ class OverlayController(context: Context) {
             PixelFormat.TRANSLUCENT,
         ).apply {
             gravity = Gravity.TOP or Gravity.START
-            alpha = windowAlpha(brightnessPercent)
+            alpha = windowAlpha(brightnessTenths)
+            screenBrightness = screenBrightnessOverride(brightnessTenths)
             layoutInDisplayCutoutMode =
                 WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
         }
@@ -53,13 +54,15 @@ class OverlayController(context: Context) {
         layoutParams = params
     }
 
-    fun update(brightnessPercent: Int): Result<Unit> = runCatching {
+    fun update(brightnessTenths: Int): Result<Unit> = runCatching {
         val view = checkNotNull(overlayView) { "Dimming overlay is not visible" }
         val params = checkNotNull(layoutParams) { "Dimming overlay has no layout parameters" }
-        val newAlpha = windowAlpha(brightnessPercent)
+        val newAlpha = windowAlpha(brightnessTenths)
+        val newScreenBrightness = screenBrightnessOverride(brightnessTenths)
 
-        if (params.alpha != newAlpha) {
+        if (params.alpha != newAlpha || params.screenBrightness != newScreenBrightness) {
             params.alpha = newAlpha
+            params.screenBrightness = newScreenBrightness
             windowManager.updateViewLayout(view, params)
         }
     }
@@ -78,6 +81,9 @@ class OverlayController(context: Context) {
         }
     }
 
-    private fun windowAlpha(brightnessPercent: Int): Float =
-        BrightnessMapper.toWindowAlpha(brightnessPercent)
+    private fun windowAlpha(brightnessTenths: Int): Float =
+        BrightnessMapper.toWindowAlpha(brightnessTenths)
+
+    private fun screenBrightnessOverride(brightnessTenths: Int): Float =
+        BrightnessMapper.toScreenBrightnessOverride(brightnessTenths)
 }
