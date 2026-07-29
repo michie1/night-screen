@@ -9,6 +9,7 @@ Features:
 
 • Live brightness control
 • Compact floating slider while dimming
+• Blue-light filter with adjustable strength
 • Optional bright-light auto-stop
 • No ads, accounts, analytics, or internet access
 • Settings stay on your device

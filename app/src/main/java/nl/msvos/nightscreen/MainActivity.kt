@@ -60,6 +60,10 @@ class MainActivity : ComponentActivity() {
                     ActiveBrightnessPanel(
                         brightnessTenths = state.brightnessTenths,
                         onBrightnessChanged = viewModel::setBrightnessTenths,
+                        onOff = {
+                            viewModel.stopDimming()
+                            finish()
+                        },
                         onOpenSettings = { showSettings = true },
                         onDismiss = ::finish,
                     )
@@ -68,6 +72,10 @@ class MainActivity : ComponentActivity() {
                         state = state,
                         notificationPermissionDenied = notificationPermissionDenied,
                         onBrightnessChanged = viewModel::setBrightnessTenths,
+                        onBlueLightFilterEnabledChanged =
+                            viewModel::setBlueLightFilterEnabled,
+                        onBlueLightFilterStrengthChanged =
+                            viewModel::setBlueLightFilterStrength,
                         onAutoStopChanged = viewModel::setAutoStopInBrightLight,
                         onBrightLightThresholdChanged = viewModel::setBrightLightThresholdLux,
                         onStart = viewModel::startDimming,

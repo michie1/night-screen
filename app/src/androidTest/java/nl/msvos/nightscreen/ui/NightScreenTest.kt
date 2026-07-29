@@ -3,6 +3,7 @@ package nl.msvos.nightscreen.ui
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -89,7 +90,7 @@ class NightScreenTest {
             ),
         )
 
-        composeRule.onNodeWithText("Previewing brightness for 10 seconds.")
+        composeRule.onNodeWithText("Previewing changes for 10 seconds.")
             .performScrollTo()
             .assertIsDisplayed()
         composeRule.onNodeWithText("Stop").assertIsDisplayed()
@@ -126,10 +127,27 @@ class NightScreenTest {
     }
 
     @Test
-    fun activePanelShowsOnlySliderAndSettings() {
+    fun blueLightFilterShowsSavedStrengthAndDisabledSlider() {
+        setScreen(
+            MainUiState(
+                blueLightFilterStrength = 50,
+                overlayPermissionGranted = true,
+                notificationPermissionGranted = true,
+            ),
+        )
+
+        composeRule.onNodeWithText("Blue light filter").assertIsDisplayed()
+        composeRule.onNodeWithText("Filter strength: 50%").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Blue light filter strength")
+            .assertIsNotEnabled()
+    }
+
+    @Test
+    fun activePanelShowsSliderOffAndSettings() {
         setActivePanel()
 
         composeRule.onNodeWithContentDescription("Brightness percentage").assertIsDisplayed()
+        composeRule.onNodeWithText("Off").assertIsDisplayed()
         composeRule.onNodeWithText("Settings").assertIsDisplayed()
         composeRule.onAllNodesWithText("Night Screen").assertCountEquals(0)
         composeRule.onAllNodesWithText("Stop").assertCountEquals(0)
@@ -149,6 +167,16 @@ class NightScreenTest {
         assertTrue(dismissed)
     }
 
+    @Test
+    fun activePanelOffUsesOffAction() {
+        var turnedOff = false
+        setActivePanel(onOff = { turnedOff = true })
+
+        composeRule.onNodeWithText("Off").performTouchInput { click() }
+
+        assertTrue(turnedOff)
+    }
+
     private fun setScreen(state: MainUiState) {
         composeRule.setContent {
             NightScreenTheme {
@@ -156,6 +184,8 @@ class NightScreenTest {
                     state = state,
                     notificationPermissionDenied = false,
                     onBrightnessChanged = {},
+                    onBlueLightFilterEnabledChanged = {},
+                    onBlueLightFilterStrengthChanged = {},
                     onAutoStopChanged = {},
                     onBrightLightThresholdChanged = {},
                     onStart = {},
@@ -168,12 +198,16 @@ class NightScreenTest {
         }
     }
 
-    private fun setActivePanel(onDismiss: () -> Unit = {}) {
+    private fun setActivePanel(
+        onOff: () -> Unit = {},
+        onDismiss: () -> Unit = {},
+    ) {
         composeRule.setContent {
             NightScreenTheme {
                 ActiveBrightnessPanel(
                     brightnessTenths = 400,
                     onBrightnessChanged = {},
+                    onOff = onOff,
                     onOpenSettings = {},
                     onDismiss = onDismiss,
                 )

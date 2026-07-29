@@ -40,6 +40,8 @@ fun NightScreen(
     state: MainUiState,
     notificationPermissionDenied: Boolean,
     onBrightnessChanged: (Int) -> Unit,
+    onBlueLightFilterEnabledChanged: (Boolean) -> Unit,
+    onBlueLightFilterStrengthChanged: (Int) -> Unit,
     onAutoStopChanged: (Boolean) -> Unit,
     onBrightLightThresholdChanged: (Int) -> Unit,
     onStart: () -> Unit,
@@ -136,6 +138,47 @@ fun NightScreen(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
+                            text = "Blue light filter",
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                        Text(
+                            text = "Adds a warm tint to reduce blue light.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Switch(
+                        checked = state.blueLightFilterEnabled,
+                        onCheckedChange = onBlueLightFilterEnabledChanged,
+                    )
+                }
+                Text(
+                    text = "Filter strength: ${state.blueLightFilterStrength}%",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Slider(
+                    value = state.blueLightFilterStrength.toFloat(),
+                    onValueChange = {
+                        onBlueLightFilterStrengthChanged(it.roundToInt())
+                    },
+                    valueRange = DimPreferences.MIN_BLUE_LIGHT_FILTER_STRENGTH.toFloat()..
+                        DimPreferences.MAX_BLUE_LIGHT_FILTER_STRENGTH.toFloat(),
+                    steps = 99,
+                    enabled = state.blueLightFilterEnabled,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics {
+                            contentDescription = "Blue light filter strength"
+                        },
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
                             text = "Auto-stop in bright light",
                             style = MaterialTheme.typography.titleMedium,
                         )
@@ -211,7 +254,7 @@ fun NightScreen(
                 if (state.isRunning) {
                     Text(
                         text = if (state.isPreviewing) {
-                            "Previewing brightness for 10 seconds."
+                            "Previewing changes for 10 seconds."
                         } else {
                             "Dimming is paused while this app is open."
                         },
@@ -230,6 +273,7 @@ private const val LIGHT_THRESHOLD_STEP = 5
 fun ActiveBrightnessPanel(
     brightnessTenths: Int,
     onBrightnessChanged: (Int) -> Unit,
+    onOff: () -> Unit,
     onOpenSettings: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -267,8 +311,16 @@ fun ActiveBrightnessPanel(
                             contentDescription = "Brightness percentage"
                         },
                 )
-                TextButton(onClick = onOpenSettings) {
-                    Text("Settings")
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    TextButton(onClick = onOff) {
+                        Text("Off")
+                    }
+                    TextButton(onClick = onOpenSettings) {
+                        Text("Settings")
+                    }
                 }
             }
         }

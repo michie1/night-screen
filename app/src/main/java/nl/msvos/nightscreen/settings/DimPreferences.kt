@@ -17,6 +17,8 @@ private val Context.dimDataStore by preferencesDataStore(name = "dim_preferences
 
 data class DimSettings(
     val brightnessTenths: Int,
+    val blueLightFilterEnabled: Boolean,
+    val blueLightFilterStrength: Int,
     val autoStopInBrightLight: Boolean,
     val brightLightThresholdLux: Int,
 )
@@ -40,6 +42,10 @@ class DimPreferences(context: Context) {
                         BrightnessMapper.MAX_BRIGHTNESS,
                     )
                     ?: DEFAULT_BRIGHTNESS_TENTHS,
+                blueLightFilterEnabled = preferences[BLUE_LIGHT_FILTER_ENABLED] ?: false,
+                blueLightFilterStrength = preferences[BLUE_LIGHT_FILTER_STRENGTH]
+                    ?.coerceIn(MIN_BLUE_LIGHT_FILTER_STRENGTH, MAX_BLUE_LIGHT_FILTER_STRENGTH)
+                    ?: DEFAULT_BLUE_LIGHT_FILTER_STRENGTH,
                 autoStopInBrightLight = preferences[AUTO_STOP_IN_BRIGHT_LIGHT] ?: false,
                 brightLightThresholdLux = preferences[BRIGHT_LIGHT_THRESHOLD_LUX]
                     ?.coerceIn(MIN_BRIGHT_LIGHT_THRESHOLD_LUX, MAX_BRIGHT_LIGHT_THRESHOLD_LUX)
@@ -70,6 +76,21 @@ class DimPreferences(context: Context) {
         }
     }
 
+    suspend fun saveBlueLightFilterEnabled(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[BLUE_LIGHT_FILTER_ENABLED] = enabled
+        }
+    }
+
+    suspend fun saveBlueLightFilterStrength(strength: Int) {
+        dataStore.edit { preferences ->
+            preferences[BLUE_LIGHT_FILTER_STRENGTH] = strength.coerceIn(
+                MIN_BLUE_LIGHT_FILTER_STRENGTH,
+                MAX_BLUE_LIGHT_FILTER_STRENGTH,
+            )
+        }
+    }
+
     suspend fun saveAutoStopInBrightLight(enabled: Boolean) {
         dataStore.edit { preferences ->
             preferences[AUTO_STOP_IN_BRIGHT_LIGHT] = enabled
@@ -87,6 +108,9 @@ class DimPreferences(context: Context) {
 
     companion object {
         const val DEFAULT_BRIGHTNESS_TENTHS = 400
+        const val DEFAULT_BLUE_LIGHT_FILTER_STRENGTH = 50
+        const val MIN_BLUE_LIGHT_FILTER_STRENGTH = 0
+        const val MAX_BLUE_LIGHT_FILTER_STRENGTH = 100
         const val DEFAULT_BRIGHT_LIGHT_THRESHOLD_LUX = 20
         const val MIN_BRIGHT_LIGHT_THRESHOLD_LUX = 5
         const val MAX_BRIGHT_LIGHT_THRESHOLD_LUX = 500
@@ -107,6 +131,10 @@ class DimPreferences(context: Context) {
             intPreferencesKey("brightness_tenths")
         private val BRIGHTNESS_PERCENT: Preferences.Key<Int> =
             intPreferencesKey("brightness_percent")
+        private val BLUE_LIGHT_FILTER_ENABLED: Preferences.Key<Boolean> =
+            booleanPreferencesKey("blue_light_filter_enabled")
+        private val BLUE_LIGHT_FILTER_STRENGTH: Preferences.Key<Int> =
+            intPreferencesKey("blue_light_filter_strength")
         private val AUTO_STOP_IN_BRIGHT_LIGHT: Preferences.Key<Boolean> =
             booleanPreferencesKey("auto_stop_in_bright_light")
         private val BRIGHT_LIGHT_THRESHOLD_LUX: Preferences.Key<Int> =

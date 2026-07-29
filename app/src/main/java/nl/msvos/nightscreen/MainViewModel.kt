@@ -27,6 +27,8 @@ import nl.msvos.nightscreen.settings.DimPreferences
 
 data class MainUiState(
     val brightnessTenths: Int = DimPreferences.DEFAULT_BRIGHTNESS_TENTHS,
+    val blueLightFilterEnabled: Boolean = false,
+    val blueLightFilterStrength: Int = DimPreferences.DEFAULT_BLUE_LIGHT_FILTER_STRENGTH,
     val autoStopInBrightLight: Boolean = false,
     val brightLightThresholdLux: Int = DimPreferences.DEFAULT_BRIGHT_LIGHT_THRESHOLD_LUX,
     val lightSensorAvailable: Boolean = true,
@@ -49,8 +51,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     )
 
     private var saveBrightnessJob: Job? = null
+    private var saveFilterStrengthJob: Job? = null
     private var saveLightThresholdJob: Job? = null
     private var serviceUpdateJob: Job? = null
+    private var filterServiceUpdateJob: Job? = null
     private var lightServiceUpdateJob: Job? = null
     private var lightSensorRegistered = false
     private val lightSensor = sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT)
@@ -72,6 +76,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 mutableUiState.update {
                     it.copy(
                         brightnessTenths = settings.brightnessTenths,
+                        blueLightFilterEnabled = settings.blueLightFilterEnabled,
+                        blueLightFilterStrength = settings.blueLightFilterStrength,
                         autoStopInBrightLight =
                             settings.autoStopInBrightLight && it.lightSensorAvailable,
                         brightLightThresholdLux = settings.brightLightThresholdLux,
@@ -173,6 +179,47 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun setBlueLightFilterEnabled(enabled: Boolean) {
+        mutableUiState.update { it.copy(blueLightFilterEnabled = enabled) }
+        viewModelScope.launch {
+            dimPreferences.saveBlueLightFilterEnabled(enabled)
+        }
+        updateRunningFilter()
+    }
+
+    fun setBlueLightFilterStrength(strength: Int) {
+        val clamped = strength.coerceIn(
+            DimPreferences.MIN_BLUE_LIGHT_FILTER_STRENGTH,
+            DimPreferences.MAX_BLUE_LIGHT_FILTER_STRENGTH,
+        )
+        mutableUiState.update { it.copy(blueLightFilterStrength = clamped) }
+
+        saveFilterStrengthJob?.cancel()
+        saveFilterStrengthJob = viewModelScope.launch {
+            delay(PREFERENCE_DEBOUNCE_MILLIS)
+            dimPreferences.saveBlueLightFilterStrength(clamped)
+        }
+        updateRunningFilter()
+    }
+
+    private fun updateRunningFilter() {
+        if (!mutableUiState.value.isRunning) {
+            return
+        }
+        filterServiceUpdateJob?.cancel()
+        filterServiceUpdateJob = viewModelScope.launch {
+            delay(SERVICE_UPDATE_DEBOUNCE_MILLIS)
+            val state = mutableUiState.value
+            if (state.isRunning) {
+                DimServiceCommands.updateBlueLightFilter(
+                    appContext,
+                    state.blueLightFilterEnabled,
+                    state.blueLightFilterStrength,
+                )
+            }
+        }
+    }
+
     fun setBrightLightThresholdLux(thresholdLux: Int) {
         val clamped = thresholdLux.coerceIn(
             DimPreferences.MIN_BRIGHT_LIGHT_THRESHOLD_LUX,
@@ -210,12 +257,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         viewModelScope.launch {
             dimPreferences.saveBrightnessTenths(state.brightnessTenths)
+            dimPreferences.saveBlueLightFilterEnabled(state.blueLightFilterEnabled)
+            dimPreferences.saveBlueLightFilterStrength(state.blueLightFilterStrength)
             dimPreferences.saveAutoStopInBrightLight(state.autoStopInBrightLight)
             dimPreferences.saveBrightLightThresholdLux(state.brightLightThresholdLux)
         }
         DimServiceCommands.start(
             context = appContext,
             brightnessTenths = state.brightnessTenths,
+            blueLightFilterEnabled = state.blueLightFilterEnabled,
+            blueLightFilterStrength = state.blueLightFilterStrength,
             autoStopInBrightLight = state.autoStopInBrightLight,
             brightLightThresholdLux = state.brightLightThresholdLux,
         )
@@ -223,6 +274,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun stopDimming() {
         serviceUpdateJob?.cancel()
+        filterServiceUpdateJob?.cancel()
         lightServiceUpdateJob?.cancel()
         if (mutableUiState.value.isRunning) {
             DimServiceCommands.stop(appContext)

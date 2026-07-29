@@ -36,6 +36,9 @@ The brightness scale runs from 0.1% to 100%:
 2. 100% removes both the filter and temporary display-brightness override.
 3. Fully black 0% is not offered.
 
+The optional blue-light filter adds a warm tint. It has an on/off switch and a
+saved strength from 0% to 100%.
+
 Below about 20%, the overlay exceeds Android's usual touch-through opacity
 limit. Android may then block taps in other apps. Night Screen's own controls
 remain usable during preview, and the ongoing notification keeps its Stop
@@ -55,9 +58,10 @@ and Stop button remain easy to see. The overlay returns when the app moves to
 the background.
 
 While dimming is active, opening Night Screen shows a small brightness panel
-over the previous screen. Slider changes update the real overlay at once.
-Tapping outside the panel closes it and keeps dimming active. Settings opens
-the full app, where slider changes preview the overlay for 10 seconds.
+over the previous screen. Slider changes update the real overlay at once. Off
+stops dimming and closes the panel. Tapping outside the panel closes it and
+keeps dimming active. Settings opens the full app, where brightness and
+blue-light filter changes preview the overlay for 10 seconds.
 
 Dimming stops when:
 
@@ -103,7 +107,7 @@ Night Screen:
 
 1. Has no internet permission.
 2. Collects no analytics.
-3. Stores only the chosen brightness and bright-light settings.
+3. Stores only the chosen brightness, blue-light filter, and bright-light settings.
 4. Has no accessibility service.
 
 See [PRIVACY.md](PRIVACY.md) for the full privacy policy.

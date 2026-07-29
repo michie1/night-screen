@@ -1,6 +1,6 @@
 # Night Screen privacy policy
 
-Effective date: July 28, 2026
+Effective date: July 29, 2026
 
 Night Screen does not collect, send, sell, or share personal data.
 
@@ -9,8 +9,10 @@ Night Screen does not collect, send, sell, or share personal data.
 Night Screen stores these settings on the device:
 
 1. Chosen brightness.
-2. Whether bright-light auto-stop is enabled.
-3. The chosen bright-light level.
+2. Whether the blue-light filter is enabled.
+3. The chosen blue-light filter strength.
+4. Whether bright-light auto-stop is enabled.
+5. The chosen bright-light level.
 
 The optional light sensor reading is used on the device. It is not saved or
 sent anywhere. Removing the app or clearing its app data removes its saved

@@ -18,18 +18,31 @@ class OverlayController(context: Context) {
     val isShowing: Boolean
         get() = overlayView != null
 
-    fun show(brightnessTenths: Int): Result<Unit> = runCatching {
+    fun show(
+        brightnessTenths: Int,
+        blueLightFilterEnabled: Boolean,
+        blueLightFilterStrength: Int,
+    ): Result<Unit> = runCatching {
         check(Settings.canDrawOverlays(appContext)) {
             "Display-over-other-apps permission is not granted"
         }
 
         if (overlayView != null) {
-            update(brightnessTenths).getOrThrow()
+            update(
+                brightnessTenths,
+                blueLightFilterEnabled,
+                blueLightFilterStrength,
+            ).getOrThrow()
             return@runCatching
         }
 
+        val style = OverlayStyleMapper.map(
+            brightnessTenths,
+            blueLightFilterEnabled,
+            blueLightFilterStrength,
+        )
         val view = View(appContext).apply {
-            setBackgroundColor(Color.BLACK)
+            setBackgroundColor(Color.rgb(style.red, style.green, style.blue))
             importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
         }
 
@@ -43,7 +56,7 @@ class OverlayController(context: Context) {
             PixelFormat.TRANSLUCENT,
         ).apply {
             gravity = Gravity.TOP or Gravity.START
-            alpha = windowAlpha(brightnessTenths)
+            alpha = style.alpha
             screenBrightness = screenBrightnessOverride(brightnessTenths)
             layoutInDisplayCutoutMode =
                 WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
@@ -54,14 +67,23 @@ class OverlayController(context: Context) {
         layoutParams = params
     }
 
-    fun update(brightnessTenths: Int): Result<Unit> = runCatching {
+    fun update(
+        brightnessTenths: Int,
+        blueLightFilterEnabled: Boolean,
+        blueLightFilterStrength: Int,
+    ): Result<Unit> = runCatching {
         val view = checkNotNull(overlayView) { "Dimming overlay is not visible" }
         val params = checkNotNull(layoutParams) { "Dimming overlay has no layout parameters" }
-        val newAlpha = windowAlpha(brightnessTenths)
+        val style = OverlayStyleMapper.map(
+            brightnessTenths,
+            blueLightFilterEnabled,
+            blueLightFilterStrength,
+        )
         val newScreenBrightness = screenBrightnessOverride(brightnessTenths)
 
-        if (params.alpha != newAlpha || params.screenBrightness != newScreenBrightness) {
-            params.alpha = newAlpha
+        view.setBackgroundColor(Color.rgb(style.red, style.green, style.blue))
+        if (params.alpha != style.alpha || params.screenBrightness != newScreenBrightness) {
+            params.alpha = style.alpha
             params.screenBrightness = newScreenBrightness
             windowManager.updateViewLayout(view, params)
         }
@@ -80,9 +102,6 @@ class OverlayController(context: Context) {
             }
         }
     }
-
-    private fun windowAlpha(brightnessTenths: Int): Float =
-        BrightnessMapper.toWindowAlpha(brightnessTenths)
 
     private fun screenBrightnessOverride(brightnessTenths: Int): Float =
         BrightnessMapper.toScreenBrightnessOverride(brightnessTenths)

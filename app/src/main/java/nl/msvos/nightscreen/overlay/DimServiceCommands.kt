@@ -8,6 +8,8 @@ object DimServiceCommands {
     fun start(
         context: Context,
         brightnessTenths: Int,
+        blueLightFilterEnabled: Boolean,
+        blueLightFilterStrength: Int,
         autoStopInBrightLight: Boolean,
         brightLightThresholdLux: Int,
     ) {
@@ -15,6 +17,8 @@ object DimServiceCommands {
             context,
             serviceIntent(context, DimService.ACTION_START).apply {
                 putExtra(DimService.EXTRA_BRIGHTNESS_TENTHS, brightnessTenths)
+                putExtra(DimService.EXTRA_BLUE_LIGHT_FILTER_ENABLED, blueLightFilterEnabled)
+                putExtra(DimService.EXTRA_BLUE_LIGHT_FILTER_STRENGTH, blueLightFilterStrength)
                 putExtra(DimService.EXTRA_AUTO_STOP_IN_BRIGHT_LIGHT, autoStopInBrightLight)
                 putExtra(DimService.EXTRA_BRIGHT_LIGHT_THRESHOLD_LUX, brightLightThresholdLux)
             },
@@ -25,6 +29,15 @@ object DimServiceCommands {
         context.startService(
             serviceIntent(context, DimService.ACTION_UPDATE_BRIGHTNESS).apply {
                 putExtra(DimService.EXTRA_BRIGHTNESS_TENTHS, brightnessTenths)
+            },
+        )
+    }
+
+    fun updateBlueLightFilter(context: Context, enabled: Boolean, strength: Int) {
+        context.startService(
+            serviceIntent(context, DimService.ACTION_UPDATE_BLUE_LIGHT_FILTER).apply {
+                putExtra(DimService.EXTRA_BLUE_LIGHT_FILTER_ENABLED, enabled)
+                putExtra(DimService.EXTRA_BLUE_LIGHT_FILTER_STRENGTH, strength)
             },
         )
     }

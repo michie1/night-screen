@@ -21,6 +21,8 @@ class DimService : Service() {
     private var previewExpiry: Runnable? = null
 
     private var brightnessTenths = DimPreferences.DEFAULT_BRIGHTNESS_TENTHS
+    private var blueLightFilterEnabled = false
+    private var blueLightFilterStrength = DimPreferences.DEFAULT_BLUE_LIGHT_FILTER_STRENGTH
     private var autoStopInBrightLight = false
     private var isStopping = false
     private var visibleMode = VisibleMode.BACKGROUND
@@ -43,7 +45,11 @@ class DimService : Service() {
                 previewExpiry = null
             },
             showOverlay = {
-                overlayController.show(brightnessTenths)
+                overlayController.show(
+                    brightnessTenths,
+                    blueLightFilterEnabled,
+                    blueLightFilterStrength,
+                )
                     .onFailure(::failSafely)
             },
             hideOverlay = {
@@ -59,11 +65,17 @@ class DimService : Service() {
         when (intent?.action) {
             ACTION_START -> startDimming(
                 brightness = intent.brightnessTenths(),
+                filterEnabled = intent.getBooleanExtra(EXTRA_BLUE_LIGHT_FILTER_ENABLED, false),
+                filterStrength = intent.blueLightFilterStrength(),
                 autoStop = intent.getBooleanExtra(EXTRA_AUTO_STOP_IN_BRIGHT_LIGHT, false),
                 thresholdLux = intent.brightLightThresholdLux(),
             )
 
             ACTION_UPDATE_BRIGHTNESS -> updateBrightness(intent.brightnessTenths())
+            ACTION_UPDATE_BLUE_LIGHT_FILTER -> updateBlueLightFilter(
+                intent.getBooleanExtra(EXTRA_BLUE_LIGHT_FILTER_ENABLED, false),
+                intent.blueLightFilterStrength(),
+            )
             ACTION_UPDATE_AUTO_STOP -> updateAutoStop(
                 intent.getBooleanExtra(EXTRA_AUTO_STOP_IN_BRIGHT_LIGHT, false),
                 intent.brightLightThresholdLux(),
@@ -78,8 +90,16 @@ class DimService : Service() {
         return START_NOT_STICKY
     }
 
-    private fun startDimming(brightness: Int, autoStop: Boolean, thresholdLux: Int) {
+    private fun startDimming(
+        brightness: Int,
+        filterEnabled: Boolean,
+        filterStrength: Int,
+        autoStop: Boolean,
+        thresholdLux: Int,
+    ) {
         brightnessTenths = brightness
+        blueLightFilterEnabled = filterEnabled
+        blueLightFilterStrength = filterStrength
         autoStopInBrightLight = autoStop && brightLightMonitor.isSupported
         brightLightMonitor.setThreshold(thresholdLux)
 
@@ -91,7 +111,11 @@ class DimService : Service() {
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
             )
             if (!AppVisibilityState.visible.value) {
-                overlayController.show(brightnessTenths).getOrThrow()
+                overlayController.show(
+                    brightnessTenths,
+                    blueLightFilterEnabled,
+                    blueLightFilterStrength,
+                ).getOrThrow()
             }
             DimServiceState.setRunning(true)
             brightLightMonitor.setEnabled(autoStopInBrightLight)
@@ -115,7 +139,11 @@ class DimService : Service() {
                 Result.success(Unit)
             }
             VisibleMode.BACKGROUND -> if (overlayController.isShowing) {
-                overlayController.update(brightnessTenths)
+                overlayController.update(
+                    brightnessTenths,
+                    blueLightFilterEnabled,
+                    blueLightFilterStrength,
+                )
             } else {
                 Result.success(Unit)
             }
@@ -123,6 +151,27 @@ class DimService : Service() {
         result
             .onSuccess { dimNotification.update(brightnessTenths) }
             .onFailure(::failSafely)
+    }
+
+    private fun updateBlueLightFilter(enabled: Boolean, strength: Int) {
+        if (!DimServiceState.running.value) {
+            stopSelf()
+            return
+        }
+
+        blueLightFilterEnabled = enabled
+        blueLightFilterStrength = strength
+        when (visibleMode) {
+            VisibleMode.PANEL -> brightnessPreview.updateDirectly()
+            VisibleMode.SETTINGS -> brightnessPreview.start()
+            VisibleMode.BACKGROUND -> if (overlayController.isShowing) {
+                overlayController.update(
+                    brightnessTenths,
+                    blueLightFilterEnabled,
+                    blueLightFilterStrength,
+                ).onFailure(::failSafely)
+            }
+        }
     }
 
     private fun updateAutoStop(enabled: Boolean, thresholdLux: Int) {
@@ -205,10 +254,21 @@ class DimService : Service() {
             DimPreferences.MAX_BRIGHT_LIGHT_THRESHOLD_LUX,
         )
 
+    private fun Intent.blueLightFilterStrength(): Int =
+        getIntExtra(
+            EXTRA_BLUE_LIGHT_FILTER_STRENGTH,
+            DimPreferences.DEFAULT_BLUE_LIGHT_FILTER_STRENGTH,
+        ).coerceIn(
+            DimPreferences.MIN_BLUE_LIGHT_FILTER_STRENGTH,
+            DimPreferences.MAX_BLUE_LIGHT_FILTER_STRENGTH,
+        )
+
     companion object {
         const val ACTION_START = "nl.msvos.nightscreen.action.START"
         const val ACTION_UPDATE_BRIGHTNESS =
             "nl.msvos.nightscreen.action.UPDATE_BRIGHTNESS"
+        const val ACTION_UPDATE_BLUE_LIGHT_FILTER =
+            "nl.msvos.nightscreen.action.UPDATE_BLUE_LIGHT_FILTER"
         const val ACTION_UPDATE_AUTO_STOP =
             "nl.msvos.nightscreen.action.UPDATE_AUTO_STOP"
         const val ACTION_PANEL_VISIBLE = "nl.msvos.nightscreen.action.PANEL_VISIBLE"
@@ -218,6 +278,10 @@ class DimService : Service() {
 
         const val EXTRA_BRIGHTNESS_TENTHS =
             "nl.msvos.nightscreen.extra.BRIGHTNESS_TENTHS"
+        const val EXTRA_BLUE_LIGHT_FILTER_ENABLED =
+            "nl.msvos.nightscreen.extra.BLUE_LIGHT_FILTER_ENABLED"
+        const val EXTRA_BLUE_LIGHT_FILTER_STRENGTH =
+            "nl.msvos.nightscreen.extra.BLUE_LIGHT_FILTER_STRENGTH"
         const val EXTRA_AUTO_STOP_IN_BRIGHT_LIGHT =
             "nl.msvos.nightscreen.extra.AUTO_STOP_IN_BRIGHT_LIGHT"
         const val EXTRA_BRIGHT_LIGHT_THRESHOLD_LUX =
