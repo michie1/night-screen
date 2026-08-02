@@ -1,6 +1,11 @@
 package nl.msvos.nightscreen.ui
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -11,6 +16,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.unit.dp
 import nl.msvos.nightscreen.MainUiState
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -47,6 +53,26 @@ class NightScreenTest {
         composeRule.onNodeWithText(
             "While dimming, Night Screen uses minimum display brightness plus this filter.",
         ).assertIsDisplayed()
+    }
+
+    @Test
+    fun compactReadyStateKeepsStartControlVisible() {
+        setScreen(
+            state = MainUiState(
+                overlayPermissionGranted = true,
+                notificationPermissionGranted = true,
+            ),
+            heightDp = 480,
+        )
+
+        composeRule.onNodeWithText("Start dimming").assertIsDisplayed()
+    }
+
+    @Test
+    fun missingPermissionsHideStartControl() {
+        setScreen(MainUiState())
+
+        composeRule.onAllNodesWithText("Start dimming").assertCountEquals(0)
     }
 
     @Test
@@ -177,23 +203,36 @@ class NightScreenTest {
         assertTrue(turnedOff)
     }
 
-    private fun setScreen(state: MainUiState) {
+    private fun setScreen(
+        state: MainUiState,
+        heightDp: Int? = null,
+    ) {
         composeRule.setContent {
             NightScreenTheme {
-                NightScreen(
-                    state = state,
-                    notificationPermissionDenied = false,
-                    onBrightnessChanged = {},
-                    onBlueLightFilterEnabledChanged = {},
-                    onBlueLightFilterStrengthChanged = {},
-                    onAutoStopChanged = {},
-                    onBrightLightThresholdChanged = {},
-                    onStart = {},
-                    onStop = {},
-                    onRequestOverlayPermission = {},
-                    onRequestNotificationPermission = {},
-                    onOpenNotificationSettings = {},
-                )
+                Box(
+                    modifier = if (heightDp == null) {
+                        Modifier.fillMaxSize()
+                    } else {
+                        Modifier
+                            .fillMaxWidth()
+                            .height(heightDp.dp)
+                    },
+                ) {
+                    NightScreen(
+                        state = state,
+                        notificationPermissionDenied = false,
+                        onBrightnessChanged = {},
+                        onBlueLightFilterEnabledChanged = {},
+                        onBlueLightFilterStrengthChanged = {},
+                        onAutoStopChanged = {},
+                        onBrightLightThresholdChanged = {},
+                        onStart = {},
+                        onStop = {},
+                        onRequestOverlayPermission = {},
+                        onRequestNotificationPermission = {},
+                        onOpenNotificationSettings = {},
+                    )
+                }
             }
         }
     }

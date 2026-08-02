@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -20,6 +21,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -50,7 +52,34 @@ fun NightScreen(
     onRequestNotificationPermission: () -> Unit,
     onOpenNotificationSettings: () -> Unit,
 ) {
-    Scaffold(containerColor = MaterialTheme.colorScheme.background) { contentPadding ->
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
+        bottomBar = {
+            if (state.overlayPermissionGranted && state.notificationPermissionGranted) {
+                Surface(color = MaterialTheme.colorScheme.background) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .navigationBarsPadding()
+                            .padding(horizontal = 24.dp, vertical = 12.dp),
+                    ) {
+                        Button(
+                            onClick = if (state.isRunning) onStop else onStart,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
+                            shape = RoundedCornerShape(16.dp),
+                        ) {
+                            Text(
+                                text = if (state.isRunning) "Stop" else "Start dimming",
+                                style = MaterialTheme.typography.titleMedium,
+                            )
+                        }
+                    }
+                }
+            }
+        },
+    ) { contentPadding ->
         Column(
             modifier = Modifier
                 .padding(contentPadding)
@@ -239,18 +268,6 @@ fun NightScreen(
                     },
                     style = MaterialTheme.typography.titleMedium,
                 )
-                Button(
-                    onClick = if (state.isRunning) onStop else onStart,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    shape = RoundedCornerShape(16.dp),
-                ) {
-                    Text(
-                        text = if (state.isRunning) "Stop" else "Start dimming",
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                }
                 if (state.isRunning) {
                     Text(
                         text = if (state.isPreviewing) {
