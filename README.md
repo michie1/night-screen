@@ -112,6 +112,10 @@ Night Screen:
 
 See [PRIVACY.md](PRIVACY.md) for the full privacy policy.
 
+## License
+
+Night Screen is licensed under the [GNU General Public License v3.0](LICENSE).
+
 ## Google Play release
 
 Store text and Play Console answers are in `fastlane/metadata/android` and
