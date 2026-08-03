@@ -4,6 +4,8 @@ Night Screen is a small Android app that dims the display below Android's
 normal minimum brightness. It places one transparent black window over the
 screen and keeps ordinary apps beneath it usable.
 
+<img src="screenshot.png" alt="Night Screen app" width="320">
+
 ## Requirements
 
 Android 14 or newer.
