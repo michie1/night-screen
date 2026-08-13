@@ -38,6 +38,18 @@ class BrightnessMapperTest {
     }
 
     @Test
+    fun relativeChangesUsePercentagePoints() {
+        assertEquals(450, BrightnessMapper.adjustByPercentagePoints(400, 5))
+        assertEquals(350, BrightnessMapper.adjustByPercentagePoints(400, -5))
+    }
+
+    @Test
+    fun relativeChangesClampToBrightnessRange() {
+        assertEquals(1, BrightnessMapper.adjustByPercentagePoints(20, -5))
+        assertEquals(1_000, BrightnessMapper.adjustByPercentagePoints(980, 5))
+    }
+
+    @Test
     fun dimmingUsesMinimumScreenBrightness() {
         assertEquals(0f, BrightnessMapper.toScreenBrightnessOverride(1), TOLERANCE)
         assertEquals(0f, BrightnessMapper.toScreenBrightnessOverride(999), TOLERANCE)

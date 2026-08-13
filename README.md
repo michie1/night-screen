@@ -23,7 +23,7 @@ app opens Android's own settings page and cannot grant this access itself.
 ### Notifications
 
 This access is required before dimming can start. It ensures that the ongoing
-foreground-service notification and its Stop action stay visible.
+foreground-service notification and its brightness, Pause/Resume, and Stop controls stay visible.
 
 ## Safety
 
@@ -44,7 +44,11 @@ saved strength from 0% to 100%.
 Below about 20%, the overlay exceeds Android's usual touch-through opacity
 limit. Android may then block taps in other apps. Night Screen's own controls
 remain usable during preview, and the ongoing notification keeps its Stop
-action as a backup exit.
+action as a backup exit. Pause hides the overlay without ending the service;
+Resume restores it.
+
+Expanding the notification shows buttons to lower or raise brightness by five
+percentage points. Changes made while paused take effect when dimming resumes.
 
 The app creates one overlay window. If adding or updating that window fails,
 the foreground service removes the overlay and stops. The service uses
@@ -77,13 +81,14 @@ Dimming does not restart after reboot.
 ## Bright-light auto-stop
 
 The optional bright-light rule stops dimming after the front light sensor
-stays above the chosen level for 10 seconds. The default is 20 lux. Falling
+stays above the chosen level for 5 seconds. The default is 20 lux. Falling
 below the level cancels the timer. The settings page shows the current reading
 and lets you set the stop level from 5 to 500 lux.
 
 The light sensor is registered only while dimming is active and this option is
-enabled. It uses the sensor's on-change mode, does not poll, and does not wake
-the phone. Its battery cost should be tiny.
+enabled. Pausing unregisters it and cancels any pending auto-stop; resuming
+starts a fresh count. It uses the sensor's on-change mode, does not poll, and
+does not wake the phone. Its battery cost should be tiny.
 
 Secure Android screens can hide application overlays. System bars, lock
 screens, screenshots, and display cutouts can also differ by phone maker.

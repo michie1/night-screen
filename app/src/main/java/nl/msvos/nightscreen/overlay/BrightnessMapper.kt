@@ -1,6 +1,9 @@
 package nl.msvos.nightscreen.overlay
 
 object BrightnessMapper {
+    fun adjustByPercentagePoints(brightnessTenths: Int, percentagePoints: Int): Int =
+        (brightnessTenths + percentagePoints * 10).coerceIn(MIN_BRIGHTNESS, MAX_BRIGHTNESS)
+
     fun toWindowAlpha(brightnessTenths: Int): Float {
         val brightness = brightnessTenths.coerceIn(MIN_BRIGHTNESS, MAX_BRIGHTNESS)
 

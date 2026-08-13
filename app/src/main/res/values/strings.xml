@@ -4,4 +4,10 @@
     <string name="notification_channel_name">Screen dimming</string>
     <string name="notification_channel_description">Controls the active screen dimming overlay</string>
     <string name="notification_stop">Stop</string>
+    <string name="notification_pause">Pause</string>
+    <string name="notification_resume">Resume</string>
+    <string name="notification_brightness">Brightness: %1$s</string>
+    <string name="notification_paused">Paused · Brightness: %1$s</string>
+    <string name="notification_decrease_brightness">−5%</string>
+    <string name="notification_increase_brightness">+5%</string>
 </resources>

@@ -8,6 +8,11 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import androidx.core.app.ServiceCompat
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import nl.msvos.nightscreen.AppVisibilityState
 import nl.msvos.nightscreen.notification.DimNotification
 import nl.msvos.nightscreen.settings.DimPreferences
@@ -17,6 +22,8 @@ class DimService : Service() {
     private lateinit var dimNotification: DimNotification
     private lateinit var brightLightMonitor: BrightLightMonitor
     private lateinit var brightnessPreview: BrightnessPreview
+    private lateinit var dimPreferences: DimPreferences
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val previewHandler = Handler(Looper.getMainLooper())
     private var previewExpiry: Runnable? = null
 
@@ -25,12 +32,14 @@ class DimService : Service() {
     private var blueLightFilterStrength = DimPreferences.DEFAULT_BLUE_LIGHT_FILTER_STRENGTH
     private var autoStopInBrightLight = false
     private var isStopping = false
+    private var isPaused = false
     private var visibleMode = VisibleMode.BACKGROUND
 
     override fun onCreate() {
         super.onCreate()
         overlayController = OverlayController(this)
         dimNotification = DimNotification(this)
+        dimPreferences = DimPreferences(this)
         brightLightMonitor = BrightLightMonitor(this, ::stopDimming)
         DimServiceState.setPreviewing(false)
         brightnessPreview = BrightnessPreview(
@@ -72,6 +81,8 @@ class DimService : Service() {
             )
 
             ACTION_UPDATE_BRIGHTNESS -> updateBrightness(intent.brightnessTenths())
+            ACTION_DECREASE_BRIGHTNESS -> adjustBrightness(-BRIGHTNESS_STEP_PERCENT)
+            ACTION_INCREASE_BRIGHTNESS -> adjustBrightness(BRIGHTNESS_STEP_PERCENT)
             ACTION_UPDATE_BLUE_LIGHT_FILTER -> updateBlueLightFilter(
                 intent.getBooleanExtra(EXTRA_BLUE_LIGHT_FILTER_ENABLED, false),
                 intent.blueLightFilterStrength(),
@@ -84,6 +95,8 @@ class DimService : Service() {
             ACTION_PANEL_VISIBLE -> showPanel()
             ACTION_SETTINGS_VISIBLE -> pauseOverlay()
             ACTION_APP_HIDDEN -> resumeOverlay()
+            ACTION_PAUSE -> pauseDimming()
+            ACTION_RESUME -> resumeDimming()
             ACTION_STOP -> stopDimming()
             else -> stopDimming()
         }
@@ -101,13 +114,14 @@ class DimService : Service() {
         blueLightFilterEnabled = filterEnabled
         blueLightFilterStrength = filterStrength
         autoStopInBrightLight = autoStop && brightLightMonitor.isSupported
+        isPaused = false
         brightLightMonitor.setThreshold(thresholdLux)
 
         runCatching {
             ServiceCompat.startForeground(
                 this,
                 DimNotification.NOTIFICATION_ID,
-                dimNotification.build(brightnessTenths),
+                dimNotification.build(brightnessTenths, isPaused),
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
             )
             if (!AppVisibilityState.visible.value) {
@@ -129,7 +143,9 @@ class DimService : Service() {
         }
 
         brightnessTenths = brightness
-        val result = when (visibleMode) {
+        val result = if (isPaused) {
+            Result.success(Unit)
+        } else when (visibleMode) {
             VisibleMode.PANEL -> {
                 brightnessPreview.updateDirectly()
                 Result.success(Unit)
@@ -149,8 +165,23 @@ class DimService : Service() {
             }
         }
         result
-            .onSuccess { dimNotification.update(brightnessTenths) }
+            .onSuccess { dimNotification.update(brightnessTenths, isPaused) }
             .onFailure(::failSafely)
+    }
+
+    private fun adjustBrightness(percentagePoints: Int) {
+        if (!DimServiceState.running.value) {
+            stopSelf()
+            return
+        }
+        val adjusted = BrightnessMapper.adjustByPercentagePoints(
+            brightnessTenths,
+            percentagePoints,
+        )
+        updateBrightness(adjusted)
+        serviceScope.launch {
+            dimPreferences.saveBrightnessTenths(adjusted)
+        }
     }
 
     private fun updateBlueLightFilter(enabled: Boolean, strength: Int) {
@@ -161,6 +192,9 @@ class DimService : Service() {
 
         blueLightFilterEnabled = enabled
         blueLightFilterStrength = strength
+        if (isPaused) {
+            return
+        }
         when (visibleMode) {
             VisibleMode.PANEL -> brightnessPreview.updateDirectly()
             VisibleMode.SETTINGS -> brightnessPreview.start()
@@ -182,7 +216,7 @@ class DimService : Service() {
 
         autoStopInBrightLight = enabled && brightLightMonitor.isSupported
         brightLightMonitor.setThreshold(thresholdLux)
-        brightLightMonitor.setEnabled(autoStopInBrightLight)
+        brightLightMonitor.setEnabled(autoStopInBrightLight && !isPaused)
     }
 
     private fun showPanel() {
@@ -191,7 +225,9 @@ class DimService : Service() {
             return
         }
         visibleMode = VisibleMode.PANEL
-        brightnessPreview.updateDirectly()
+        if (!isPaused) {
+            brightnessPreview.updateDirectly()
+        }
     }
 
     private fun pauseOverlay() {
@@ -200,7 +236,9 @@ class DimService : Service() {
             return
         }
         visibleMode = VisibleMode.SETTINGS
-        brightnessPreview.appVisible()
+        if (!isPaused) {
+            brightnessPreview.appVisible()
+        }
     }
 
     private fun resumeOverlay() {
@@ -208,7 +246,32 @@ class DimService : Service() {
             return
         }
         visibleMode = VisibleMode.BACKGROUND
-        brightnessPreview.appHidden()
+        if (!isPaused) {
+            brightnessPreview.appHidden()
+        }
+    }
+
+    private fun pauseDimming() {
+        if (!DimServiceState.running.value || isPaused) {
+            return
+        }
+        isPaused = true
+        brightnessPreview.stop()
+        brightLightMonitor.stop()
+        dimNotification.update(brightnessTenths, isPaused)
+    }
+
+    private fun resumeDimming() {
+        if (!DimServiceState.running.value || !isPaused) {
+            return
+        }
+        isPaused = false
+        when (visibleMode) {
+            VisibleMode.BACKGROUND, VisibleMode.PANEL -> brightnessPreview.updateDirectly()
+            VisibleMode.SETTINGS -> brightnessPreview.appVisible()
+        }
+        brightLightMonitor.setEnabled(autoStopInBrightLight)
+        dimNotification.update(brightnessTenths, isPaused)
     }
 
     private fun stopDimming() {
@@ -216,6 +279,7 @@ class DimService : Service() {
             return
         }
         isStopping = true
+        isPaused = false
         brightnessPreview.stop()
         brightLightMonitor.stop()
         DimServiceState.setRunning(false)
@@ -234,6 +298,7 @@ class DimService : Service() {
         brightnessPreview.stop()
         brightLightMonitor.stop()
         DimServiceState.setRunning(false)
+        serviceScope.cancel()
         super.onDestroy()
     }
 
@@ -267,6 +332,10 @@ class DimService : Service() {
         const val ACTION_START = "nl.msvos.nightscreen.action.START"
         const val ACTION_UPDATE_BRIGHTNESS =
             "nl.msvos.nightscreen.action.UPDATE_BRIGHTNESS"
+        const val ACTION_DECREASE_BRIGHTNESS =
+            "nl.msvos.nightscreen.action.DECREASE_BRIGHTNESS"
+        const val ACTION_INCREASE_BRIGHTNESS =
+            "nl.msvos.nightscreen.action.INCREASE_BRIGHTNESS"
         const val ACTION_UPDATE_BLUE_LIGHT_FILTER =
             "nl.msvos.nightscreen.action.UPDATE_BLUE_LIGHT_FILTER"
         const val ACTION_UPDATE_AUTO_STOP =
@@ -274,6 +343,8 @@ class DimService : Service() {
         const val ACTION_PANEL_VISIBLE = "nl.msvos.nightscreen.action.PANEL_VISIBLE"
         const val ACTION_SETTINGS_VISIBLE = "nl.msvos.nightscreen.action.SETTINGS_VISIBLE"
         const val ACTION_APP_HIDDEN = "nl.msvos.nightscreen.action.APP_HIDDEN"
+        const val ACTION_PAUSE = "nl.msvos.nightscreen.action.PAUSE"
+        const val ACTION_RESUME = "nl.msvos.nightscreen.action.RESUME"
         const val ACTION_STOP = "nl.msvos.nightscreen.action.STOP"
 
         const val EXTRA_BRIGHTNESS_TENTHS =
@@ -288,6 +359,7 @@ class DimService : Service() {
             "nl.msvos.nightscreen.extra.BRIGHT_LIGHT_THRESHOLD_LUX"
 
         private const val TAG = "NightScreen"
+        private const val BRIGHTNESS_STEP_PERCENT = 5
     }
 
     private enum class VisibleMode {
