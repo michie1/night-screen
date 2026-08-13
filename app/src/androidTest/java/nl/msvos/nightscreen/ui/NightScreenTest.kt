@@ -147,7 +147,7 @@ class NightScreenTest {
         )
 
         composeRule.onNodeWithText(
-            "Current light: 310 lux. Stops after 10 seconds above 20 lux.",
+            "Current light: 310 lux. Stops after 5 seconds above 20 lux.",
         ).assertIsDisplayed()
         composeRule.onNodeWithText("Auto-stop level: 20 lux").assertIsDisplayed()
     }

@@ -214,7 +214,7 @@ fun NightScreen(
                         Text(
                             text = if (state.lightSensorAvailable) {
                                 val reading = state.currentLux?.let { "$it lux" } ?: "reading…"
-                                "Current light: $reading. Stops after 10 seconds above " +
+                                "Current light: $reading. Stops after 5 seconds above " +
                                     "${state.brightLightThresholdLux} lux."
                             } else {
                                 "Light sensor unavailable."

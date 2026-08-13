@@ -27,10 +27,10 @@ class BrightLightGateTest {
     )
 
     @Test
-    fun thresholdStartsTenSecondHold() {
+    fun thresholdStartsFiveSecondHold() {
         gate.onLuxChanged(20f)
 
-        assertEquals(10_000L, scheduledDelay)
+        assertEquals(5_000L, scheduledDelay)
         assertFalse(triggered)
 
         scheduledAction?.invoke()
@@ -62,7 +62,7 @@ class BrightLightGateTest {
 
         gate.setThreshold(10f)
 
-        assertEquals(10_000L, scheduledDelay)
+        assertEquals(5_000L, scheduledDelay)
         assertFalse(triggered)
     }
 }

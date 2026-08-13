@@ -44,6 +44,6 @@ internal class BrightLightGate(
     }
 
     companion object {
-        const val HOLD_MILLIS = 10_000L
+        const val HOLD_MILLIS = 5_000L
     }
 }
